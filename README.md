@@ -12,7 +12,7 @@ This project focuses on **Beijing-style Mahjong**, a ruleset widely played in no
 
 Each player begins with **13 tiles** and draws one on each turn, discarding one until achieving a valid **14-tile winning hand (Hu)**.  
 A standard winning hand must consist of **four melds (sets)** and **one pair (eyes)**, where melds can be:
-
+![Beijing Mahjong Example Board](images/mahjong_board.png)
 - **Pungs** – three identical tiles (e.g., three 5 of Characters)  
 - **Chows** – three consecutive tiles of the same suit (e.g., 3–4–5 of Dots)  
 - **Kongs** – four identical tiles (a special type of Pung that yields a bonus fan)  
