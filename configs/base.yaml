@@ -4,5 +4,5 @@ t_fan_threshold: 10
 alpha: 0.5
 penalty_deal_in: 10
 rounds_per_trial: 20
-trials: 10
+trials: 1000
 baseline_utility: 50

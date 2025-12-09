@@ -235,21 +235,16 @@ python main.py --experiment 4    # Sensitivity analysis
 python main.py --all
 ```
 
-**Quick demo (single trial):**
-```bash
-python main.py --demo
-```
-
 ### Running Tests
 
 **Run all tests with coverage:**
 ```bash
-pytest tests/ --cov=mahjong_sim --cov-report=term-missing --cov-report=html
+pytest pytest/ --cov=mahjong_sim --cov-report=term-missing --cov-report=html
 ```
 
 **Run tests without coverage:**
 ```bash
-pytest tests/ -v
+pytest pytest/ -v
 ```
 
 **View coverage report:**
@@ -279,7 +274,7 @@ open htmlcov/index.html
 │   ├── players.py            # Player classes and NeutralPolicy
 │   ├── utils.py              # Statistical utilities and comparisons
 │   └── plotting.py           # Visualization functions
-├── tests/
+├── pytest/                    # Test suite
 │   ├── test_simulation.py     # Basic simulation tests
 │   ├── test_simulation_extended.py  # Extended simulation tests
 │   ├── test_strategies.py    # Strategy function tests
@@ -342,8 +337,6 @@ The project includes comprehensive unit tests with **65.56% code coverage** (exc
 - `test_players.py`: Player and NeutralPolicy tests
 - `test_table.py`: Table simulation tests
 - `test_utils.py`: Statistical utility tests
-
-See `tests/README.md` for detailed testing instructions.
 
 ---
 
