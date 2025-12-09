@@ -1,193 +1,192 @@
 # Monte Carlo Simulation of Strategic Trade-offs in Beijing Mahjong
 
 **Authors:** Xu Chen, BoHan Shan  
-**NetIDs:** xc74, bohans3
+**NetIDs:** xc74, bohans3  
+
+---
 
 ## 🀄 Introduction
 
-This project implements a Monte Carlo simulation to study strategic trade-offs in Beijing-style Mahjong. The simulation compares defensive and aggressive playing strategies under various conditions to test three key hypotheses:
+Mahjong is a traditional four-player strategy game that blends elements of probability, pattern recognition, and risk–reward decision-making.  
+This project focuses on **Beijing-style Mahjong**, a ruleset widely played in northern China.  
 
-- **H1**: Defensive players achieve higher expected long-term monetary profit than aggressive players
-- **H2**: Aggressive players achieve higher average utility (accounting for emotional rewards) than defensive players
-- **H3**: Strategy performance depends on table composition (proportion of defensive vs aggressive opponents)
+Each player begins with **13 tiles** and draws one on each turn, discarding one until achieving a valid **14-tile winning hand (Hu)**.  
+A standard winning hand must consist of **four melds (sets)** and **one pair (eyes)**, where melds can be:
+![Beijing Mahjong Example Board](images/mahjong_board.png)
+- **Pungs** – three identical tiles (e.g., three 5 of Characters)  
+- **Chows** – three consecutive tiles of the same suit (e.g., 3–4–5 of Dots)  
+- **Kongs** – four identical tiles (a special type of Pung that yields a bonus fan)  
+- The **pair (eyes)** is any two identical tiles (e.g., two Red Dragons)
 
-## 📁 Project Structure
+Unlike southern variants such as Sichuan Mahjong that emphasize continuous rounds or “blood battle” mechanics, the **Beijing style** uses a **fan-based scoring system** with independent hands and exponential payoffs determined by the complexity of the winning pattern.
 
-```
-├── README.md
-├── requirements.txt
-├── main.py
-├── configs/
-│   └── base.yaml
-├── mahjong_sim/
-│   ├── __init__.py
-│   ├── players.py          # Neutral policy used in 4-player tables
-│   ├── plotting.py         # Shared Matplotlib helpers
-│   ├── scoring.py          # Score computation functions
-│   ├── simulation.py       # Core single-player simulation logic
-│   ├── strategies.py       # Defensive / aggressive strategy rules
-│   ├── table.py            # 4-player table simulation
-│   ├── utils.py            # Stats helpers & analysis utilities
-│   └── variables.py        # Random variable sampling functions
-├── experiments/
-│   ├── run_experiment_1.py
-│   ├── run_experiment_2.py
-│   ├── run_experiment_3.py
-│   ├── run_experiment_3_table.py
-│   └── run_sensitivity.py
-├── tests/
-│   ├── test_players.py
-│   ├── test_scoring.py
-│   ├── test_simulation.py
-│   ├── test_simulation_extended.py
-│   ├── test_strategies.py
-│   ├── test_table.py
-│   ├── test_utils.py
-│   └── test_variables.py
-├── output/                # Text logs from main.py / experiments
-└── plots/                 # PNG charts grouped per experiment
-```
+The total score for a winning hand typically follows an exponential relationship:
+where `B` is a fixed base point (e.g., 2 or 4).
 
-## 🚀 Installation
+---
 
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+### Common Fan Sources in Beijing Rules
 
-## 🎮 Usage
+| **Category** | **Example** | **Fan Value** |
+|---------------|-------------|----------------|
+| **Basic hand** | Self-draw, Concealed hand, All simples | 1 fan |
+| **Common wins** | All pungs, Mixed triple chow | 2 fan |
+| **Advanced hands** | Pure flush, Little dragons | 4–6 fan |
+| **Add-on bonuses** | Kong +1 fan; "Kong open" win +1 fan | Variable (1–2 fan) |
 
-### Run a specific experiment:
-if python command throw you an error, try python3
-```bash
-python main.py --experiment 1  # Run experiment 1
-python main.py --experiment 2  # Run experiment 2
-python main.py --experiment 3  # Run experiment 3
-python3 experiments/run_experiment_3_table.py # four-players table
-python main.py --experiment 4  # Run experiment 4 (sensitivity analysis)
-```
+#### 1. Basic Hand — 1 Fan Each
+**① Self-draw — 1 fan**  
+Definition: You win by drawing the winning tile yourself.  
+Requirements:  
+- Winning tile must come from your own draw  
+- Melds (chi/pong) do not affect this bonus  
+**② Concealed hand — 1 fan**  
+Definition: You win with a completely closed hand.  
+Requirements:  
+- No exposed melds  
+- Win may be self-draw or discard depending on rule set  
+**③ All simples — 1 fan**  
+Definition: Hand contains no terminals (1 or 9) and no honors.  
+Requirements:  
+- Tiles must be 2–8 only  
+- Melds allowed as long as tiles meet criteria  
+#### 2. Common Wins — 2 Fan Each
+**④ All pungs — 2 fan**  
+Definition: Hand consists of four pung/kong sets and one pair.  
+Requirements:  
+- Exposed or concealed allowed  
+- Pair may be any tile  
+**⑤ Mixed triple chow — 2 fan**  
+Definition: Same numbered chow appears in all three suits.  
+Example: 4–5–6 in characters, dots, bamboos  
+Requirements:  
+- Three identical sequences, one in each suit  
+#### 3. Advanced Hands — 4–6 Fan Each
+**⑥ Pure flush — 4–6 fan**  
+Definition: Whole hand uses tiles from one suit, no honors.  
+Fan range:  
+- Exposed melds → lower (4 fan)  
+- Fully concealed → higher (6 fan)  
+**⑦ Little dragons — 4–6 fan**  
+Definition:  
+- Two dragon pungs/kongs  
+- Pair made from the remaining dragon  
+Requirements:  
+- Dragon melds may be exposed or concealed  
+- Pair must be the third dragon  
+#### 4. Add-on Bonuses — +1 to +2 Fan
+**⑧ Kong — +1 fan**  
+Definition: Kong formed by upgrading an existing Pung meld (from self-draw or discard).  
+Bonus: +1 fan per kong  
+**⑨ "Kong open" win — +1 fan**  
+Definition: Win on the tile drawn immediately after making a kong.  
+Bonus: +1 fan, added on top of kong bonuses  
 
-### Run all experiments:
-```bash
-python main.py --all
-```
+---
 
-### Run quick demo (single trial):
-```bash
-python main.py --demo
-```
+### Pi Hu Rule and Strategy Implications
 
-### Run experiments directly:
-```bash
-python experiments/run_experiment_1.py
-python experiments/run_experiment_2.py
-python experiments/run_experiment_3.py
-python3 experiments/run_experiment_3_table.py
-python experiments/run_sensitivity.py
-python3 main.py --all
-```
+In our simulation, **Pi Hu with 1 fan is allowed** as the minimum valid winning hand.  
+Traditional Beijing rules require at least one fan to declare a win, and our implementation enforces this:  
+a structurally complete hand of four melds plus one pair **must have at least 1 fan to win** (0 fan is invalid).  
+**Pi Hu (1 fan)** represents the most basic winning hand and is fully allowed.
 
-## ⚙️ Configuration
-
-All tunable parameters live in `configs/base.yaml`. Update that file (and keep everything YAML-valid) whenever you want to explore a different scenario. Each field is documented inline, but the table below summarizes the intent and safe range of values:
-
-| Key | Meaning | Typical / acceptable range |
-| --- | --- | --- |
-| `base_points` | Base score before fan multipliers | `0.5 – 4`; stay ≤ 5 to keep payouts realistic |
-| `fan_min` | Min fan required for the defensive player to declare Hu | `1 – 3`; must be ≥ 1 because Pi Hu is invalid |
-| `t_fan_threshold` | Fan threshold for the aggressive player to continue chasing | `2 – 6`; higher values push for bigger hands |
-| `alpha` | Legacy utility weight (kept for compatibility) | `0 – 1`; leave at `0.5` unless you extend the old utility model |
-| `penalty_deal_in` | Multiplier applied to the loser on deal-in rounds | `1 – 5`; larger values make mistakes very costly |
-| `rounds_per_trial` | Rounds per simulation trial | `50 – 400`; higher means smoother averages, longer runtime |
-| `trials` | Number of trials when aggregating stats | `200 – 5000`; ≥ 1000 recommended for stable confidence intervals |
-| `random_seed` | Seed for NumPy RNG (ensures reproducibility) | Any integer; change only if you want different stochastic runs |
-| `initial_bankroll` | Starting bankroll used in ruin-probability metrics | `200 – 5000`; higher bankroll reduces ruin odds |
-| `table_trials` | Number of trials per composition in 4-player tables | `200 – 2000`; ≥ 800 recommended for smooth dealer stats |
-
-> Tip: after editing `base.yaml`, rerun the relevant experiment scripts so the new configuration gets picked up automatically.
-
-
-## 🧪 Running Tests
-
-```bash
-cd your folder directionary
-python3 -m pytest tests/
-```
-
-## 📊 Experiments
-
-### Experiment 1: Strategy Comparison
-Compares defensive vs aggressive strategies on profit and utility metrics. Tests H1.
-
-### Experiment 2: Utility Function Analysis
-Uses CRRA (Constant Relative Risk Aversion) utility function with emotional rewards for high-fan hands. Tests H2.
-
-### Experiment 3: Table Composition Analysis
-Varies the proportion of defensive players (theta: 0, 0.33, 0.67, 1.0) and analyzes its effect on strategy performance. Tests H3.
-
-### Experiment 4: Sensitivity Analysis
-Examines robustness by varying key parameters:
-- Deal-in penalty (P): 1, 2, 3, 4, 5
-- Alpha (utility weight): 0.1, 0.3, 0.5, 0.7, 0.9
-- Fan threshold: 1, 2, 3, 4, 5
-- Base points: 1, 2, 4
-
-## 📈 Output
-
-Each experiment outputs:
-- Mean values with 95% confidence intervals
-- t-test statistics and p-values for comparisons
-- Win rates and deal-in rates
-- Fan distributions
-- Regression analysis (for composition experiment)
-
-## 🔬 Methodology
-
-The simulation models each round with random variables:
-- **Q**: Hand quality (potential to complete winning hand)
-- **F**: Fan potential (expected hand value)
-- **R**: Deal-in risk (probability of discarding winning tile)
-- **T**: Threat level (pressure from opponents)
-- **K**: Kong events (adds bonus fan)
-
-Scoring follows: `Score = B * 2^fan` where B is base points.
+This creates two key consequences for the simulation:
+1. Defensive players can win with **1 fan (Pi Hu)** as soon as they reach this minimum threshold, reducing exposure to deal-in risk.  
+2. Aggressive players pursue higher-fan outcomes (typically 3+ fan), choosing to continue drawing rather than accepting 1-fan Pi Hu wins.
 
 
 
-## ✅ Latest Results (seed = 42)
+---
 
-`python3 main.py --all` writes the most recent metrics to `output/all_experiments_output.txt`. Highlights from the latest run (summarized):
+## 🎯 Hypotheses
 
-- **Experiment 1 (4-player table)**  
-  - Defensive: profit ≈ `879`, utility ≈ `-53`, win rate `20.2%`, mean fan `2.53`.  
-  - Aggressive: profit ≈ `-74`, utility ≈ `-229`, win rate `5.3%`, mean fan `5.63`.  
-  - Insight: defensive play steadily earns chips while aggressive runners hit large-fan wins but suffer consistent negative utility.
+**H1:**  
+Defensive players, who prioritize winning whenever possible, will achieve higher expected long-term monetary profit than aggressive players, who only win on hands meeting or exceeding a specified fan threshold.
 
-- **Experiment 2 (utility focus, 2000 trials × 200 rounds)**  
-  - Defensive utility mean `172.0` (95% CI `[169.4, 174.6]`).  
-  - Aggressive utility mean `74.2` (95% CI `[70.3, 78.1]`).  
-  - Difference (Agg − Def) `-97.8`, `t = 41.10`, `p < 1e-6`.  
-  - Profit reference: defensive `23,917`, aggressive `18,199`.
+**H2:**  
+Despite potentially earning less monetary profit, aggressive players will achieve higher average utility than defensive players when utility accounts for both emotional rewards of large-hand wins and penalties for missed opportunities or deal-ins.
 
-- **Experiment 3A (single-player θ sweep)**  
-  - Defensive profit grows from `23.9k` (θ = 0) to `26.7k` (θ = 1) with win rate ≈ `33.6%`.  
-  - Aggressive profit increases with more defensive opponents (`17.2k` → `22.4k`), confirming the composition hypothesis in the single-player abstraction.
+**H3:**  
+The relative performance of aggressive and defensive strategies depends on the **composition of opponents** at the table.  
+As the proportion of defensive players increases, the expected profit of aggressive players rises, while that of defensive players declines.
 
-- **Experiment 3B (full 4-player table)**  
-  - θ counts defensive opponents (0–4). θ = 2 lands near zero-sum (DEF `-177`, AGG `+177`).  
-  - Regression slopes: defensive `-4.9k` per extra DEF opponent (R² `0.96`), aggressive `-11.7k` (R² `0.81`).  
-  - Dealer stats remain roughly zero-sum each round, validating the rotation logic.
+---
 
-- **Experiment 4 (sensitivity)**  
-  - Deal-in penalty 1 → 5 expands the DEF–AGG profit gap from `≈3.3k` to `≈11.1k`.  
-  - Utility weight α changes do not overturn DEF advantage (DEF ≈ `0.55k`, AGG ≈ `0.30k`).  
-  - Aggressive fan threshold trades frequency for hand size (threshold 1: win `33.6%` / fan `2.2`; threshold 5: win `2.1%` / fan `8.3`).  
-  - Base points scaling stays proportional (e.g., base 4 → DEF ≈ `101k`, AGG ≈ `68.6k`).
+## ⚙️ Methodology
 
+This project uses a **Monte Carlo simulation** to model and compare long-term outcomes of player strategies under Beijing-style Mahjong rules.  
+It does **not** involve any machine learning or predictive modeling; all results are based purely on random sampling and probabilistic reasoning.
+
+---
+
+### Phase 1 – Design
+
+This project implements a **real Monte Carlo simulation** using actual tile-based gameplay mechanics.  
+Each simulated round represents a complete hand among four players using a full **136-tile deck** (Wan, Tiao, Tong, Feng, Jian tiles).
+
+**Game Mechanics:**
+- **Deal:** Each player receives 13 tiles; dealer receives 14 tiles
+- **Draw and Discard:** Players take turns drawing from the wall and discarding tiles
+- **Player Actions:** Players can declare **Peng** (triplet from discard), **Kong** (quad, upgraded from Pung), or **Hu** (win)
+- **Chi (sequence) is NOT allowed** in this variant
+- **Winning Detection:** Real pattern matching to detect valid winning hands (4 melds + 1 pair)
+- **Fan Calculation:** Based on actual hand patterns (triplets, sequences, Kongs, special patterns)
+
+**Scoring:**
+Each round yields one or more winning events (self-draw or deal-in win).  
+Scoring follows the Beijing Mahjong rule: `Score = B × 2^fan` where `B` is the base unit score and total fan includes bonuses from hand patterns and Kongs.  
+Deal-in penalties are subtracted from the losing player's total; self-draws distribute points from all three opponents.  
+The **minimum fan requirement** ensures that any hand with `Fan < 1` is invalid and yields no win. **Pi Hu with 1 fan is allowed** and represents the most basic winning hand.
+
+---
+
+### Phase 2 – Experiments
+
+We define two player strategies as decision policies on when to declare a win:
+
+- **Defensive strategy (DEF):** declares Hu immediately when `fan >= fan_min` (typically 1) and the hand is ready; minimizes further risk.  
+- **Aggressive strategy (AGG):** declares Hu only if `fan >= t_fan_threshold` (for example, `t_fan_threshold = 3`); otherwise continues drawing, pursuing higher-fan hands.
+
+Each simulation trial consists of **20 rounds per player** (configurable via `rounds_per_trial`), with multiple trials (default: 10) to obtain stable distributions.
+
+| **Experiment** | **Variable Manipulated** | **Purpose** |
+|-----------------|--------------------------|-------------|
+| 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) |
+| 2. Utility function analysis | Apply nonlinear utility U(score) with CRRA or weighted penalties | Test H2 (utility difference) |
+| 3. Table composition sweep | Vary proportion of DEF players, theta = 0, 0.33, 0.67, 1 | Test H3 (composition threshold) |
+| 4. Sensitivity analysis | Vary P (deal-in penalty), alpha (fan growth rate), and total fan | Examine robustness of conclusions |
+
+**Utility function:**
+---
+
+### Phase 3 – Analysis
+
+Simulation outputs are aggregated across all trials to estimate:
+
+- Expected profit per trial: E(Score)  
+- Expected utility: E(U)  
+- Variance and confidence intervals for both measures  
+- Win rate, self-draw rate, and deal-in rate  
+- Fan distribution (frequency of 1–16 fan outcomes)  
+- Risk metrics such as maximum drawdown and ruin probability under a finite bankroll  
+
+Statistical comparisons between strategy types use **two-sample t-tests** and **confidence intervals**.  
+For composition analysis (H3), we run a **regression of profit against theta** (the proportion of defensive opponents) to detect sign changes that indicate the critical threshold of player compositions.  
+
+All experiments use **modular Python code** and configuration-driven runs via YAML inputs.
+
+---
 
 ## 📚 Reference
 
 Chen, J. C., Tang, S. C., & Wu, I. C. (n.d.). *Monte-Carlo simulation for Mahjong.*  
 National Yang Ming Chiao Tung University Academic Hub.  
-https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong
+[https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong](https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong)
 
+*Image from:*  
+Chen, J. C., Tang, S. C., & Wu, I. C. (n.d.). *Monte-Carlo simulation for Mahjong.*  
+National Yang Ming Chiao Tung University Academic Hub.  
+[https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong](https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong)
+
+---

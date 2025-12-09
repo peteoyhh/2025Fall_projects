@@ -42,10 +42,6 @@ def main():
             with open(config_path) as f:
                 cfg = yaml.safe_load(f)
             
-            if "random_seed" in cfg:
-                np.random.seed(cfg["random_seed"])
-                print(f"Random seed set to: {cfg['random_seed']}")
-            
             print("=" * 70)
             print("Experiment 3: 4-Player Table Composition Analysis")
             print("Testing H3: Strategy performance depends on opponent composition (θ)")

@@ -1,17 +1,15 @@
 from typing import Dict, Callable, Union, Any, Optional
 import numpy as np
-from .variables import (
-    sample_hand_quality,
-    sample_base_fan,
-    sample_kong_events,
-    sample_deal_in_risk,
-    can_complete_hand
+from .real_mc import (
+    Player,
+    RealMCSimulation,
+    simulate_real_mc_round,
+    run_real_mc_trial
 )
 from .scoring import (
     compute_score,
     compute_winner_profit,
-    compute_loser_cost,
-    compute_total_fan
+    compute_loser_cost
 )
 
 
@@ -66,41 +64,81 @@ def compute_utility(profit: float, missed_hu: bool, deal_in_as_loser: bool,
 DEALER_READY_THRESHOLD = 0.6
 
 
-def simulate_round(player_strategy: Callable[[Union[int, float]], bool], 
-                  cfg: Dict[str, Any], is_dealer: bool = False) -> Dict[str, Union[float, int, bool]]:
+def simulate_round_real(player_strategy: Callable[[Union[int, float]], bool], 
+                       cfg: Dict[str, Any], is_dealer: bool = False) -> Dict[str, Union[float, int, bool]]:
     """
-    Simulate a single round of Beijing Mahjong.
+    Simulate a single round using REAL Monte Carlo (actual tiles).
     
-    Logic flow:
-    1. Sample hand quality Q
-    2. Check if hand can be completed (probability = Q)
-    3. If can complete, sample fan and check strategy
-    4. If strategy accepts, determine win/loss and compute scores
-    5. Calculate profit and utility
-    
-    Args:
-        player_strategy: Strategy function that takes fan and returns bool
-        cfg: Configuration dictionary
-    
-    Returns:
-        Dictionary with round results:
-        - profit: Profit from this round
-        - utility: Utility from this round
-        - fan: Total fan count (0 if didn't win)
-        - won: Boolean indicating if player won
-        - deal_in_as_winner: Boolean indicating if won via deal-in
-        - deal_in_as_loser: Boolean indicating if lost via deal-in
-        - missed_hu: Boolean indicating if missed a possible Hu
+    This uses the real_mc module for actual tile-based simulation.
     """
-    # Sample random variables
-    Q = sample_hand_quality()
-    R = sample_deal_in_risk()
+    from .real_mc import Player
     
-    # Check if hand can be completed
-    can_win = can_complete_hand(Q)
+    # Determine strategy type
+    fan_min = cfg.get("fan_min", 1)
+    fan_threshold = cfg.get("t_fan_threshold", 3)
     
-    if not can_win:
-        # Hand cannot be completed - no win possible
+    # Create test player
+    strategy_type = "DEF"  # Default
+    if player_strategy(fan_min):
+        strategy_type = "DEF"
+    elif not player_strategy(fan_threshold - 1):
+        strategy_type = "AGG"
+    
+    player = Player(0, strategy_type, player_strategy)
+    player.is_dealer = is_dealer
+    
+    # Create 3 neutral opponents
+    opponents = [
+        Player(1, "NEU", None),
+        Player(2, "NEU", None),
+        Player(3, "NEU", None)
+    ]
+    
+    all_players = [player] + opponents
+    
+    # Simulate round
+    result = simulate_real_mc_round(all_players, cfg, dealer_index=0 if is_dealer else 1)
+    
+    # Convert result format
+    if result["winner"] == 0:
+        # Our player won
+        profit = result.get("winner_profit", 0.0)
+        fan = result.get("fan", 0)
+        is_self_draw = result.get("is_self_draw", False)
+        
+        return {
+            "profit": profit,
+            "utility": compute_utility(profit, missed_hu=False, deal_in_as_loser=False),
+            "fan": fan,
+            "won": True,
+            "deal_in_as_winner": not is_self_draw,
+            "deal_in_as_loser": False,
+            "missed_hu": False
+        }
+    elif result["winner"] is not None:
+        # Opponent won, check if we dealt in
+        # Use deal_in_player_id from result to accurately determine if we dealt in
+        deal_in_player_id = result.get("deal_in_player_id")
+        dealt_in = (deal_in_player_id == 0)  # Our player is player_id=0
+        
+        profit = 0.0
+        if dealt_in:
+            # Calculate loss
+            fan = result.get("fan", 0)
+            score = compute_score(fan, cfg.get("base_points", 1))
+            profit = compute_loser_cost(score, cfg.get("penalty_deal_in", 3), is_deal_in_loser=True)
+        
+        return {
+            "profit": profit,
+            "utility": compute_utility(profit, missed_hu=False, deal_in_as_loser=dealt_in),
+            "fan": 0,
+            "won": False,
+            "deal_in_as_winner": False,
+            "deal_in_as_loser": dealt_in,
+            "missed_hu": False
+        }
+    else:
+        # Draw
         return {
             "profit": 0.0,
             "utility": 0.0,
@@ -110,101 +148,25 @@ def simulate_round(player_strategy: Callable[[Union[int, float]], bool],
             "deal_in_as_loser": False,
             "missed_hu": False
         }
+
+
+def simulate_round(player_strategy: Callable[[Union[int, float]], bool], 
+                  cfg: Dict[str, Any], is_dealer: bool = False) -> Dict[str, Union[float, int, bool]]:
+    """
+    Simulate a single round of Beijing Mahjong using REAL Monte Carlo.
     
-    # Hand can be completed - sample fan and Kong
-    base_fan = sample_base_fan()
-    kong_count = sample_kong_events(lam=0.2, max_kongs=2)  # Cap Kongs at 2
-    total_fan = compute_total_fan(base_fan, kong_count, max_total_fan=16)  # Cap total fan at 16
+    Uses actual tile-based simulation with 136 tiles.
     
-    # Check if strategy accepts this fan level
-    strategy_accepts = player_strategy(total_fan)
+    Args:
+        player_strategy: Strategy function that takes fan and returns bool
+        cfg: Configuration dictionary
+        is_dealer: Whether player is dealer
     
-    if not strategy_accepts:
-        # Strategy rejected - missed Hu opportunity
-        # Check if opponent wins (deal-in risk)
-        deal_in_as_loser = np.random.rand() < R
-        
-        profit = 0.0
-        if deal_in_as_loser:
-            # Opponent won, we dealt in
-            # Sample opponent's fan (simplified: assume average fan)
-            opponent_base_fan = sample_base_fan()
-            opponent_kong = sample_kong_events(lam=0.2, max_kongs=2)
-            opponent_fan = compute_total_fan(opponent_base_fan, opponent_kong, max_total_fan=16)
-            opponent_score = compute_score(opponent_fan, cfg["base_points"])
-            profit = compute_loser_cost(
-                opponent_score,
-                cfg["penalty_deal_in"],
-                is_deal_in_loser=True
-            )
-        
-        utility = compute_utility(
-            profit,
-            missed_hu=True,
-            deal_in_as_loser=deal_in_as_loser
-        )
-        
-        return {
-            "profit": profit,
-            "utility": utility,
-            "fan": 0,
-            "won": False,
-            "deal_in_as_winner": False,
-            "deal_in_as_loser": deal_in_as_loser,
-            "missed_hu": True
-        }
-    
-    # Strategy accepts - player wins
-    score = compute_score(total_fan, cfg["base_points"])
-    
-    # Determine win type: self-draw or deal-in
-    # Deal-in occurs with probability R
-    deal_in_occurred = np.random.rand() < R
-    
-    if deal_in_occurred:
-        # Won via deal-in
-        profit = compute_winner_profit(
-            score,
-            is_self_draw=False,
-            deal_in_occurred=True
-        )
-        utility = compute_utility(
-            profit,
-            missed_hu=False,
-            deal_in_as_loser=False
-        )
-        
-        return {
-            "profit": profit,
-            "utility": utility,
-            "fan": total_fan,
-            "won": True,
-            "deal_in_as_winner": True,
-            "deal_in_as_loser": False,
-            "missed_hu": False
-        }
-    else:
-        # Won via self-draw
-        profit = compute_winner_profit(
-            score,
-            is_self_draw=True,
-            deal_in_occurred=False
-        )
-        utility = compute_utility(
-            profit,
-            missed_hu=False,
-            deal_in_as_loser=False
-        )
-        
-        return {
-            "profit": profit,
-            "utility": utility,
-            "fan": total_fan,
-            "won": True,
-            "deal_in_as_winner": False,
-            "deal_in_as_loser": False,
-            "missed_hu": False
-        }
+    Returns:
+        Dictionary with round results
+    """
+    # Use real Monte Carlo simulation
+    return simulate_round_real(player_strategy, cfg, is_dealer)
 
 
 def run_simulation(strategy_fn: Callable[[Union[int, float]], bool], 

@@ -56,10 +56,6 @@ def main():
     with open("configs/base.yaml") as f:
         cfg = yaml.safe_load(f)
 
-    if "random_seed" in cfg:
-        np.random.seed(cfg["random_seed"])
-        print(f"Random seed set to: {cfg['random_seed']}")
-
     print("=" * 60)
     print("Experiment 1: Strategy Performance (4-player table)")
     print("=" * 60)

@@ -4,7 +4,6 @@ import numpy as np
 from mahjong_sim.simulation import run_multiple_trials
 from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
 from mahjong_sim.utils import analyze_composition_effect, compute_statistics
-from mahjong_sim.variables import sample_deal_in_risk
 from mahjong_sim.plotting import ensure_dir, save_line_plot
 
 
@@ -209,10 +208,7 @@ def main():
     with open("configs/base.yaml") as f:
         cfg = yaml.safe_load(f)
     
-    # Set random seed for reproducibility
-    if "random_seed" in cfg:
-        np.random.seed(cfg["random_seed"])
-        print(f"Random seed set to: {cfg['random_seed']}")
+    # Note: Real Monte Carlo simulation does not use random seed
     
     print("=" * 60)
     print("Experiment 3: Table Composition Analysis")

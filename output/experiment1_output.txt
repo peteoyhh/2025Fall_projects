@@ -1,22 +1,21 @@
-Random seed set to: 42
 ============================================================
 Experiment 1: Strategy Performance (4-player table)
 ============================================================
 
 Defensive Strategy Results:
-  Profit: 879.00
-  Utility: -53.46
-  Win Rate: 0.2020
-  Deal-in Rate: 0.0535
-  Mean Fan: 2.53
+  Profit: -14.00
+  Utility: 194.67
+  Win Rate: 0.2200
+  Deal-in Rate: 0.1150
+  Mean Fan: 1.66
 
 Aggressive Strategy Results:
-  Profit: -73.87
-  Utility: -229.36
-  Win Rate: 0.0526
+  Profit: -3.80
+  Utility: 189.97
+  Win Rate: 0.0700
   Deal-in Rate: 0.0150
-  Mean Fan: 5.63
+  Mean Fan: 2.63
 
 ============================================================
 
-Plots saved to: /Users/xihao/Desktop/597PRFINAL/plots/experiment_1
+Plots saved to: /Users/xuchen/597PRFINAL_INPROGRESS/plots/experiment_1

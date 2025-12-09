@@ -3,8 +3,7 @@ fan_min: 1
 t_fan_threshold: 3
 alpha: 0.5
 penalty_deal_in: 3
-rounds_per_trial: 200
-trials: 2000
-random_seed: 42
+rounds_per_trial: 20
+trials: 10
 initial_bankroll: 1000
-table_trials: 1000
+table_trials: 10

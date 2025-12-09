@@ -10,12 +10,6 @@ from mahjong_sim.plotting import ensure_dir, save_line_plot
 def main():
     with open("configs/base.yaml") as f:
         base_cfg = yaml.safe_load(f)
-    
-    # Set random seed for reproducibility
-    if "random_seed" in base_cfg:
-        np.random.seed(base_cfg["random_seed"])
-        print(f"Random seed set to: {base_cfg['random_seed']}")
-    
     print("=" * 60)
     print("Experiment 4: Sensitivity Analysis")
     print("Varying key parameters: P (penalty), alpha, and fan threshold")
@@ -37,12 +31,12 @@ def main():
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
             cfg,
-            num_trials=500  # Fewer trials for sensitivity analysis
+            num_trials=10
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         
         def_stats = compute_statistics(results_def["profits"])
@@ -71,12 +65,12 @@ def main():
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         
         def_stats = compute_statistics(results_def["utilities"])
@@ -105,7 +99,7 @@ def main():
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, threshold),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         
         agg_stats = compute_statistics(results_agg["profits"])
@@ -133,12 +127,12 @@ def main():
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
             cfg,
-            num_trials=500
+            num_trials=10
         )
         
         def_stats = compute_statistics(results_def["profits"])

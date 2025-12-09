@@ -151,11 +151,6 @@ def main():
     with open("configs/base.yaml") as f:
         cfg = yaml.safe_load(f)
     
-    # Set random seed for reproducibility
-    if "random_seed" in cfg:
-        np.random.seed(cfg["random_seed"])
-        print(f"Random seed set to: {cfg['random_seed']}")
-    
     print("=" * 60)
     print("Experiment 2: Utility Function Analysis")
     print("Testing H2: Aggressive strategy utility > Defensive strategy utility")
