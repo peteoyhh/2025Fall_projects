@@ -1,9 +1,8 @@
 base_points: 1
 fan_min: 1
-t_fan_threshold: 3
+t_fan_threshold: 10
 alpha: 0.5
-penalty_deal_in: 3
+penalty_deal_in: 10
 rounds_per_trial: 20
 trials: 10
-initial_bankroll: 1000
-table_trials: 10
+baseline_utility: 50

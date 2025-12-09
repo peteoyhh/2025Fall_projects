@@ -23,7 +23,7 @@ if project_root not in sys.path:
 import contextlib
 import yaml
 import numpy as np
-from mahjong_sim.table import run_composition_experiments
+from mahjong_sim.real_mc import run_composition_experiments
 from mahjong_sim.utils import analyze_composition_effect, compute_statistics
 from mahjong_sim.plotting import ensure_dir, save_line_plot, save_bar_plot, save_hist
 from main import TeeStream
@@ -47,9 +47,18 @@ def main():
             print("Testing H3: Strategy performance depends on opponent composition (θ)")
             print("=" * 70)
             
-            num_trials = cfg.get("table_trials", 1000)
-            print(f"\nRunning {num_trials} trials per composition...")
-            print(f"Each trial consists of {cfg['rounds_per_trial']} rounds.\n")
+            num_trials = cfg.get("trials")
+            if num_trials is None:
+                raise ValueError("trials must be specified in config")
+            rounds_per_trial = cfg.get("rounds_per_trial", 20)
+            num_compositions = 5  # θ = 0, 1, 2, 3, 4
+            total_trials = num_trials * num_compositions
+            total_rounds = total_trials * rounds_per_trial
+            
+            print(f"\nRunning {num_trials} trials per composition ({num_compositions} compositions)")
+            print(f"Each trial consists of {rounds_per_trial} rounds")
+            print(f"Total trials: {total_trials}")
+            print(f"Total rounds: {total_rounds}\n")
             
             results = run_composition_experiments(cfg, num_trials=num_trials)
             
@@ -69,6 +78,7 @@ def main():
                 if num_def > 0:
                     def_stats = comp_results["defensive"]
                     print(f"\nDEFENSIVE Players:")
+                    print("  (All values are averages across all trials)")
                     print(f"  Mean Profit: {def_stats['mean_profit']:.2f} ± {def_stats['std_profit']:.2f}")
                     print(f"  Mean Utility: {def_stats['mean_utility']:.2f} ± {def_stats['std_utility']:.2f}")
                     print(f"  Win Rate: {def_stats['win_rate']:.4f}")
@@ -79,6 +89,7 @@ def main():
                 if num_agg > 0:
                     agg_stats = comp_results["aggressive"]
                     print(f"\nAGGRESSIVE Players:")
+                    print("  (All values are averages across all trials)")
                     print(f"  Mean Profit: {agg_stats['mean_profit']:.2f} ± {agg_stats['std_profit']:.2f}")
                     print(f"  Mean Utility: {agg_stats['mean_utility']:.2f} ± {agg_stats['std_utility']:.2f}")
                     print(f"  Win Rate: {agg_stats['win_rate']:.4f}")
@@ -90,6 +101,7 @@ def main():
                 non_dealer_stats = comp_results["non_dealer"]
 
                 print(f"\nDEALER ROUNDS:")
+                print("  (All values are averages across all dealer rounds)")
                 print(f"  Mean Profit: {dealer_stats['mean_profit']:.2f} ± {dealer_stats['std_profit']:.2f}")
                 print(f"  Mean Utility: {dealer_stats['mean_utility']:.2f} ± {dealer_stats['std_utility']:.2f}")
                 print(f"  Win Rate: {dealer_stats['win_rate']:.4f}")
@@ -98,6 +110,7 @@ def main():
                 print(f"  Missed Hu Rate: {dealer_stats['missed_hu_rate']:.4f}")
 
                 print(f"\nNON-DEALER ROUNDS:")
+                print("  (All values are averages across all non-dealer rounds)")
                 print(f"  Mean Profit: {non_dealer_stats['mean_profit']:.2f} ± {non_dealer_stats['std_profit']:.2f}")
                 print(f"  Mean Utility: {non_dealer_stats['mean_utility']:.2f} ± {non_dealer_stats['std_utility']:.2f}")
                 print(f"  Win Rate: {non_dealer_stats['win_rate']:.4f}")
@@ -223,7 +236,8 @@ def main():
                 "Profit vs Composition (θ): Defensive Strategy",
                 "θ (Number of DEF Players)",
                 "Mean Profit",
-                os.path.join(plot_dir, "def_profit_vs_theta.png")
+                os.path.join(plot_dir, "def_profit_vs_theta.png"),
+                label1="Defensive"
             )
             
             save_line_plot(
@@ -232,7 +246,8 @@ def main():
                 "Profit vs Composition (θ): Aggressive Strategy",
                 "θ (Number of DEF Players)",
                 "Mean Profit",
-                os.path.join(plot_dir, "agg_profit_vs_theta.png")
+                os.path.join(plot_dir, "agg_profit_vs_theta.png"),
+                label1="Aggressive"
             )
             
             save_line_plot(

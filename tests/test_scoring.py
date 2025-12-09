@@ -1,8 +1,7 @@
 from mahjong_sim.scoring import (
     compute_score,
     compute_winner_profit,
-    compute_loser_cost,
-    compute_total_fan
+    compute_loser_cost
 )
 
 
@@ -38,19 +37,6 @@ def test_compute_loser_cost():
     
     # Loser should always pay (negative)
     assert cost < 0
-
-
-def test_compute_total_fan():
-    """Test total fan calculation including Kong."""
-    assert compute_total_fan(1, 0) == 1
-    assert compute_total_fan(2, 1) == 3
-    assert compute_total_fan(4, 2) == 6
-
-
-def test_compute_total_fan_cap():
-    """Test total fan calculation with cap."""
-    assert compute_total_fan(15, 5, max_total_fan=16) == 16  # Should cap at 16
-    assert compute_total_fan(10, 3, max_total_fan=16) == 13  # Should not cap
 
 
 def test_compute_score_various_fan():

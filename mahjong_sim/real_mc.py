@@ -1,20 +1,88 @@
 """
 Real Monte Carlo simulation for Beijing Mahjong.
 
-Implements actual tile-based game simulation with:
-- 136 tiles (Wan, Tiao, Tong, Feng, Jian)
-- Real deal, draw, discard mechanics
-- Real hand state management
-- Real winning hand detection
-- Real fan calculation based on actual patterns
-- Real player interactions (Peng, Hu) - Chi is NOT allowed
+This is the unified simulation module that combines:
+- Core game mechanics (tiles, hands, players)
+- Table simulation (4-player games)
+- Single-player simulation
+- Utility calculation
+- All experiment interfaces
+
+All simulation uses actual tile-based gameplay with 136 tiles.
 """
 
 import numpy as np
-from typing import List, Dict, Tuple, Optional, Set
+from typing import List, Dict, Tuple, Optional, Set, Callable, Union, Any
 from enum import Enum
 from collections import Counter
 import random
+import time
+
+# Import scoring functions
+from .scoring import (
+    compute_score,
+    compute_winner_profit,
+    compute_loser_cost
+)
+from .strategies import defensive_strategy, aggressive_strategy
+
+# Initialize random seed based on current time to ensure different results on each run
+# This ensures that each program execution produces different random sequences
+random.seed(int(time.time() * 1000000) % (2**32))
+np.random.seed(int(time.time() * 1000000) % (2**32))
+
+
+def compute_utility(profit: float, missed_hu: bool, deal_in_as_loser: bool, 
+                   missed_penalty: float = 0.2, deal_in_penalty: float = 0.5,
+                   fan: int = 0) -> float:
+    """
+    Compute utility using strong concave reward function with minimal penalties.
+    
+    U = concave_reward(profit) - small_penalties
+    
+    Key design principles:
+    - Strong concave (non-linear) reward function for positive profits
+    - Utility is monotone increasing with profit
+    - Penalties are minimal and do not overpower rewards
+    - Winners always have strongly positive utility contribution
+    - From fan >= 2, utility reward is multiplied by 10
+    
+    Args:
+        profit: Profit from the hand (can be negative if lost)
+        missed_hu: Boolean indicating if player missed a possible Hu
+        deal_in_as_loser: Boolean indicating if player dealt in as loser
+        missed_penalty: Penalty for missing a Hu (default: 0.2, greatly reduced)
+        deal_in_penalty: Penalty for dealing in as loser (default: 0.5, greatly reduced)
+        fan: Fan count of the hand (default: 0, used for bonus multiplier)
+    
+    Returns:
+        Utility value
+    """
+    # Base utility calculation: sqrt(profit) * 3
+    # Then multiply by 3 again if fan >= 2 (total 9x for fan >= 2)
+    if profit > 0:
+        # Positive profit: sqrt(profit) * 3
+        utility = np.sqrt(profit) * 3
+        
+        # Multiply utility reward by 3 again for fan >= 2 (total 9x)
+        if fan >= 2:
+            utility *= 3
+    elif profit < 0:
+        # Negative profit: -sqrt(abs(profit)) * 3
+        utility = -np.sqrt(abs(profit)) * 3
+    else:
+        # Zero profit
+        utility = 0.0
+    
+    # Apply minimal penalties only when they occur
+    # Penalties are greatly reduced to not overpower the concave rewards
+    if missed_hu:
+        utility -= missed_penalty
+    
+    if deal_in_as_loser:
+        utility -= deal_in_penalty
+    
+    return utility
 
 
 class TileType(Enum):
@@ -793,11 +861,16 @@ class RealMCSimulation:
                     player.hand.melds[kong_meld_idx] = kong_meld
                     # Kong is a fixed meld (no special marking needed)
                     
-                    # Player restarts turn: draw replacement tile
-                    replacement = self.wall.draw()
-                    if replacement:
+                    # Player restarts turn: continuously check for Kong and win after drawing replacement tiles
+                    while True:
+                        replacement = self.wall.draw()
+                        if not replacement:
+                            # Wall exhausted after Kong - end round as draw
+                            return self._process_draw()
+                        
                         player.hand.add_tile(replacement)
-                        # Check if can win on replacement tile
+                        
+                        # Check if can win on replacement tile FIRST
                         can_win_after_kong, fan_after_kong = player.can_win_on_tile(
                             replacement, is_self_draw=True)
                         if can_win_after_kong:
@@ -806,11 +879,25 @@ class RealMCSimulation:
                             risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
                             if player.should_hu(fan_after_kong, fan_min, fan_threshold, risk):
                                 return self._process_win(player, fan_after_kong, is_self_draw=True)
-                        # After Kong, player continues turn (will discard in next iteration)
-                        # current_player stays the same
-                    else:
-                        # Wall exhausted after Kong - end round as draw
-                        return self._process_draw()
+                        
+                        # Check if can Kong again (upgrade another Pung meld)
+                        kong_meld_idx = player.hand.can_kong(replacement)
+                        if kong_meld_idx is not None:
+                            # Upgrade another Pung meld to Kong
+                            old_pung = player.hand.melds[kong_meld_idx]
+                            if player.hand.remove_tile(replacement):
+                                kong_meld = old_pung.copy() + [replacement]
+                                player.hand.melds[kong_meld_idx] = kong_meld
+                                # Continue loop to draw another replacement tile
+                                continue
+                            else:
+                                # Should not happen, but break if remove fails
+                                break
+                        else:
+                            # No more Kong possible, break and continue to discard
+                            break
+                    # After Kong(s), player continues turn (will discard in next iteration)
+                    # current_player stays the same
                 # If Kong was processed, skip Pung check and continue to discard
             else:
                 # If no Kong, check for self-draw Pung
@@ -881,12 +968,17 @@ class RealMCSimulation:
                             other_player.hand.melds[kong_meld_idx] = kong_meld
                             # Kong is a fixed meld
                             
-                            # Player restarts turn: draw replacement tile
+                            # Player restarts turn: continuously check for Kong and win after drawing replacement tiles
                             self.current_player = i
-                            replacement = self.wall.draw()
-                            if replacement:
+                            while True:
+                                replacement = self.wall.draw()
+                                if not replacement:
+                                    # Wall exhausted after Kong - end round as draw
+                                    return self._process_draw()
+                                
                                 other_player.hand.add_tile(replacement)
-                                # Check if can win on replacement tile
+                                
+                                # Check if can win on replacement tile FIRST
                                 can_win_after_kong, fan_after_kong = other_player.can_win_on_tile(
                                     replacement, is_self_draw=True)
                                 if can_win_after_kong:
@@ -896,10 +988,24 @@ class RealMCSimulation:
                                     if other_player.should_hu(fan_after_kong, fan_min, fan_threshold, risk):
                                         return self._process_win(other_player, fan_after_kong, 
                                                                    is_self_draw=True)
-                                # After Kong, player continues turn (will discard in next iteration)
-                            else:
-                                # Wall exhausted after Kong - end round as draw
-                                return self._process_draw()
+                                
+                                # Check if can Kong again (upgrade another Pung meld)
+                                kong_meld_idx = other_player.hand.can_kong(replacement)
+                                if kong_meld_idx is not None:
+                                    # Upgrade another Pung meld to Kong
+                                    old_pung = other_player.hand.melds[kong_meld_idx]
+                                    if other_player.hand.remove_tile(replacement):
+                                        kong_meld = old_pung.copy() + [replacement]
+                                        other_player.hand.melds[kong_meld_idx] = kong_meld
+                                        # Continue loop to draw another replacement tile
+                                        continue
+                                    else:
+                                        # Should not happen, but break if remove fails
+                                        break
+                                else:
+                                    # No more Kong possible, break and continue to discard
+                                    break
+                            # After Kong(s), player continues turn (will discard in next iteration)
                             
                             action_taken = True
                             break  # Only one player can Kong
@@ -963,15 +1069,13 @@ class RealMCSimulation:
     def _process_win(self, winner: Player, fan: int, is_self_draw: bool, 
                     deal_in_player: Optional[Player] = None) -> Dict:
         """Process winning result"""
-        from .scoring import compute_score, compute_winner_profit, compute_loser_cost
-        from .simulation import compute_utility
-        
         score = compute_score(fan, self.cfg.get("base_points", 1))
         
         if is_self_draw:
             # Self-draw: winner gets from all 3 opponents
             winner_profit = compute_winner_profit(score, is_self_draw=True, deal_in_occurred=False)
-            winner.profit += winner_profit * 3  # From 3 opponents
+            total_winner_profit = winner_profit * 3  # Total from 3 opponents
+            winner.profit += total_winner_profit
             
             for player in self.players:
                 if player != winner:
@@ -981,7 +1085,8 @@ class RealMCSimulation:
         else:
             # Deal-in: winner gets from deal-in player only
             winner_profit = compute_winner_profit(score, is_self_draw=False, deal_in_occurred=True)
-            winner.profit += winner_profit
+            total_winner_profit = winner_profit  # Total profit (same as single profit for deal-in)
+            winner.profit += total_winner_profit
             
             if deal_in_player:
                 loser_cost = compute_loser_cost(score, self.cfg.get("penalty_deal_in", 3), 
@@ -990,8 +1095,8 @@ class RealMCSimulation:
         
         winner.wins += 1
         
-        # Calculate utility
-        winner.utility += compute_utility(winner_profit, missed_hu=False, deal_in_as_loser=False)
+        # Calculate utility using sqrt(profit) * 3, based on total profit for this round
+        winner.utility += compute_utility(total_winner_profit, missed_hu=False, deal_in_as_loser=False, fan=fan)
         
         return {
             "winner": winner.player_id,
@@ -1054,3 +1159,627 @@ def run_real_mc_trial(players: List[Player], cfg: Dict, rounds: int = 200) -> Di
     
     return results
 
+
+# ============================================================================
+# Table Simulation Functions (from table.py)
+# ============================================================================
+
+def simulate_table_round(players, cfg, dealer_index):
+    """
+    Simulate a single round with 4 players using REAL Monte Carlo.
+    
+    Args:
+        players: List of player dicts with "strategy" and "strategy_type"
+        cfg: Configuration dictionary
+        dealer_index: Index of dealer player
+    
+    Returns:
+        (results, round_meta) tuple
+    """
+    # Convert player dicts to Player objects
+    mc_players = []
+    fan_min = cfg.get("fan_min", 1)
+    fan_threshold = cfg.get("t_fan_threshold", 3)
+    
+    for i, player_dict in enumerate(players):
+        strategy_type = player_dict.get("strategy_type", "NEU")
+        strategy_fn = player_dict.get("strategy")
+        
+        mc_player = Player(i, strategy_type, strategy_fn)
+        mc_player.is_dealer = (i == dealer_index)
+        mc_players.append(mc_player)
+    
+    # Simulate round using real Monte Carlo
+    result = simulate_real_mc_round(mc_players, cfg, dealer_index)
+    
+    # Convert result to expected format
+    results = []
+    winner_idx = result.get("winner")
+    is_self_draw = result.get("is_self_draw", False)
+    fan = result.get("fan", 0)
+    winner_profit = result.get("winner_profit", 0.0)
+    
+    # Initialize all players with zero results
+    for i in range(len(players)):
+        results.append({
+            "profit": 0.0,
+            "utility": 0.0,
+            "fan": 0,
+            "won": False,
+            "deal_in_as_winner": False,
+            "deal_in_as_loser": False,
+            "missed_hu": False
+        })
+    
+    if winner_idx is not None:
+        # Someone won
+        winner = mc_players[winner_idx]
+        results[winner_idx]["won"] = True
+        results[winner_idx]["fan"] = fan
+        results[winner_idx]["deal_in_as_winner"] = not is_self_draw
+        
+        # Calculate total profit for winner (self-draw: 3x, deal-in: 1x)
+        if is_self_draw:
+            total_winner_profit = winner_profit * 3
+        else:
+            total_winner_profit = winner_profit
+        
+        results[winner_idx]["profit"] = total_winner_profit
+        results[winner_idx]["utility"] = compute_utility(
+            total_winner_profit, 
+            missed_hu=False, 
+            deal_in_as_loser=False,
+            fan=fan
+        )
+        
+        # Calculate losses for other players
+        score = compute_score(fan, cfg.get("base_points", 1))
+        
+        if is_self_draw:
+            # Self-draw: all 3 opponents pay
+            loser_cost = compute_loser_cost(
+                score,
+                cfg.get("penalty_deal_in", 3),
+                is_deal_in_loser=False
+            )
+            for i in range(len(players)):
+                if i != winner_idx:
+                    results[i]["profit"] = loser_cost
+                    results[i]["utility"] = compute_utility(
+                        loser_cost,
+                        missed_hu=False,
+                        deal_in_as_loser=False,
+                        fan=0
+                    )
+        else:
+            # Deal-in: get deal_in_player from result
+            deal_in_player_idx = result.get("deal_in_player_id")
+            
+            if deal_in_player_idx is not None:
+                loser_cost = compute_loser_cost(
+                    score,
+                    cfg.get("penalty_deal_in", 3),
+                    is_deal_in_loser=True
+                )
+                results[deal_in_player_idx]["profit"] = loser_cost
+                results[deal_in_player_idx]["deal_in_as_loser"] = True
+                results[deal_in_player_idx]["utility"] = compute_utility(
+                    loser_cost,
+                    missed_hu=False,
+                    deal_in_as_loser=True,
+                    fan=0
+                )
+            else:
+                # Fallback: if deal_in_player_id is None but is_self_draw=False,
+                # this should not happen in normal gameplay, but handle gracefully
+                # In this case, we cannot determine who dealt in, so no one pays deal-in penalty
+                # This is a safety fallback for edge cases
+                pass
+        
+        # Check for missed Hu opportunities
+        for i, player in enumerate(mc_players):
+            if i != winner_idx and player.missed_hus > 0:
+                results[i]["missed_hu"] = True
+                # Update utility with missed Hu penalty
+                results[i]["utility"] = compute_utility(
+                    results[i]["profit"],
+                    missed_hu=True,
+                    deal_in_as_loser=results[i]["deal_in_as_loser"],
+                    fan=0
+                )
+    
+    # Round metadata
+    round_meta = {
+        "winner_index": winner_idx,
+        "winner_is_dealer": winner_idx == dealer_index if winner_idx is not None else False,
+        "dealer_ready": False,  # Not used in real MC
+        "dealer_continues": winner_idx == dealer_index if winner_idx is not None else False,
+        "is_draw": winner_idx is None
+    }
+    
+    return results, round_meta
+
+
+def _run_table(players, cfg, rounds_per_trial, baseline_utility=None):
+    """Run table simulation with multiple rounds"""
+    if baseline_utility is None:
+        baseline_utility = cfg.get("baseline_utility", 50)
+    dealer_index = 0
+
+    player_count = len(players)
+
+    all_profits = [[] for _ in range(player_count)]
+    all_utilities = [[] for _ in range(player_count)]
+    all_fans = [[] for _ in range(player_count)]
+    all_wins = [[] for _ in range(player_count)]
+    all_deal_in_as_winner = [[] for _ in range(player_count)]
+    all_deal_in_as_loser = [[] for _ in range(player_count)]
+    all_missed_hu = [[] for _ in range(player_count)]
+
+    dealer_round_stats = {
+        "profits": [],
+        "utilities": [],
+        "wins": [],
+        "deal_in_as_winner": [],
+        "deal_in_as_loser": [],
+        "missed_hu": [],
+        "fans": []
+    }
+
+    non_dealer_round_stats = {
+        "profits": [],
+        "utilities": [],
+        "wins": [],
+        "deal_in_as_winner": [],
+        "deal_in_as_loser": [],
+        "missed_hu": [],
+        "fans": []
+    }
+
+    for _ in range(rounds_per_trial):
+        round_results, round_meta = simulate_table_round(players, cfg, dealer_index)
+
+        for i, result in enumerate(round_results):
+            all_profits[i].append(result["profit"])
+            all_utilities[i].append(result["utility"])
+            all_fans[i].append(result["fan"])
+            all_wins[i].append(result["won"])
+            all_deal_in_as_winner[i].append(result["deal_in_as_winner"])
+            all_deal_in_as_loser[i].append(result["deal_in_as_loser"])
+            all_missed_hu[i].append(result["missed_hu"])
+
+            target_stats = dealer_round_stats if i == dealer_index else non_dealer_round_stats
+            target_stats["profits"].append(result["profit"])
+            target_stats["utilities"].append(result["utility"])
+            target_stats["wins"].append(result["won"])
+            target_stats["deal_in_as_winner"].append(result["deal_in_as_winner"])
+            target_stats["deal_in_as_loser"].append(result["deal_in_as_loser"])
+            target_stats["missed_hu"].append(result["missed_hu"])
+            target_stats["fans"].append(result["fan"])
+
+        if not round_meta["dealer_continues"]:
+            dealer_index = (dealer_index + 1) % player_count
+
+    def_stats = {
+        "profits": [],
+        "utilities": [],
+        "fans": [],
+        "wins": [],
+        "deal_in_as_winner": [],
+        "deal_in_as_loser": [],
+        "missed_hu": []
+    }
+
+    agg_stats = {
+        "profits": [],
+        "utilities": [],
+        "fans": [],
+        "wins": [],
+        "deal_in_as_winner": [],
+        "deal_in_as_loser": [],
+        "missed_hu": []
+    }
+
+    per_player_stats = []
+
+    for i, player in enumerate(players):
+        profit_sum = np.sum(all_profits[i])
+        utility_sum = baseline_utility + np.sum(all_utilities[i])
+        wins = all_wins[i]
+        fans = [f for f in all_fans[i] if f > 0]
+
+        stats = {
+            "profit": profit_sum,
+            "utility": utility_sum,
+            "mean_fan": np.mean(fans) if len(fans) > 0 else 0.0,
+            "win_rate": np.mean(wins),
+            "deal_in_rate": np.mean(all_deal_in_as_winner[i]),
+            "deal_in_loss_rate": np.mean(all_deal_in_as_loser[i]),
+            "missed_win_rate": np.mean(all_missed_hu[i]),
+            "fan_distribution": all_fans[i]
+        }
+
+        per_player_stats.append({
+            "player_index": i,
+            "strategy_type": player.get("strategy_type"),
+            **stats
+        })
+
+        if player.get("strategy_type") == "DEF":
+            def_stats["profits"].append(stats["profit"])
+            def_stats["utilities"].append(stats["utility"])
+            def_stats["fans"].extend(fans)
+            def_stats["wins"].append(stats["win_rate"])
+            def_stats["deal_in_as_winner"].append(stats["deal_in_rate"])
+            def_stats["deal_in_as_loser"].append(stats["deal_in_loss_rate"])
+            def_stats["missed_hu"].append(stats["missed_win_rate"])
+        elif player.get("strategy_type") == "AGG":
+            agg_stats["profits"].append(stats["profit"])
+            agg_stats["utilities"].append(stats["utility"])
+            agg_stats["fans"].extend(fans)
+            agg_stats["wins"].append(stats["win_rate"])
+            agg_stats["deal_in_as_winner"].append(stats["deal_in_rate"])
+            agg_stats["deal_in_as_loser"].append(stats["deal_in_loss_rate"])
+            agg_stats["missed_hu"].append(stats["missed_win_rate"])
+
+    return {
+        "defensive": def_stats,
+        "aggressive": agg_stats,
+        "dealer": dealer_round_stats,
+        "non_dealer": non_dealer_round_stats,
+        "per_player": per_player_stats
+    }
+
+
+def simulate_table(composition, cfg, baseline_utility=None):
+    """
+    Simulate a full table trial with given composition using REAL Monte Carlo.
+    """
+    if baseline_utility is None:
+        baseline_utility = cfg.get("baseline_utility", 50)
+    
+    num_def = composition
+    num_agg = 4 - composition
+
+    players = []
+    fan_min = cfg["fan_min"]
+    t_fan_threshold = cfg["t_fan_threshold"]
+
+    for _ in range(num_def):
+        players.append({
+            "strategy": lambda f, fm=fan_min: defensive_strategy(f, fm),
+            "strategy_type": "DEF"
+        })
+    for _ in range(num_agg):
+        players.append({
+            "strategy": lambda f, th=t_fan_threshold: aggressive_strategy(f, th),
+            "strategy_type": "AGG"
+        })
+
+    result = _run_table(players, cfg, cfg["rounds_per_trial"], baseline_utility)
+    result["composition"] = composition
+    return result
+
+
+def simulate_custom_table(players, cfg, rounds_per_trial=None, baseline_utility=None):
+    """
+    Run a table simulation with a custom list of players using REAL Monte Carlo.
+    
+    Args:
+        players: List of player dicts with "strategy" and "strategy_type"
+        cfg: Configuration dictionary
+        rounds_per_trial: Number of rounds (defaults to cfg["rounds_per_trial"])
+        baseline_utility: Baseline utility (defaults to cfg["baseline_utility"] or 50)
+    
+    Returns:
+        Dictionary with aggregated statistics
+    """
+    if rounds_per_trial is None:
+        rounds_per_trial = cfg.get("rounds_per_trial")
+        if rounds_per_trial is None:
+            raise ValueError("rounds_per_trial must be specified in config")
+    if baseline_utility is None:
+        baseline_utility = cfg.get("baseline_utility", 50)
+    result = _run_table(players, cfg, rounds_per_trial, baseline_utility)
+    result["composition"] = None
+    return result
+
+
+def run_composition_experiments(cfg, num_trials=None):
+    """
+    Run experiments for all table compositions (θ = 0 to 4).
+    
+    Args:
+        cfg: Configuration dictionary
+        num_trials: Number of trials per composition (defaults to cfg["trials"])
+    
+    Returns:
+        Dictionary with results for each composition
+    """
+    if num_trials is None:
+        num_trials = cfg.get("trials")
+        if num_trials is None:
+            raise ValueError("trials must be specified in config")
+    
+    compositions = [0, 1, 2, 3, 4]  # θ = number of DEF players
+    results = {}
+    
+    for composition in compositions:
+        print(f"Running composition θ={composition} ({composition} DEF, {4-composition} AGG)...")
+        
+        all_def_profits = []
+        all_def_utilities = []
+        all_agg_profits = []
+        all_agg_utilities = []
+        all_def_win_rates = []
+        all_agg_win_rates = []
+        all_def_deal_in_rates = []
+        all_agg_deal_in_rates = []
+        all_def_missed_hu_rates = []
+        all_agg_missed_hu_rates = []
+        all_def_fans = []
+        all_agg_fans = []
+        all_dealer_profits = []
+        all_dealer_utilities = []
+        all_dealer_wins = []
+        all_dealer_deal_in_rates = []
+        all_dealer_deal_in_loss_rates = []
+        all_dealer_missed_hu = []
+        all_dealer_fans = []
+        all_non_dealer_profits = []
+        all_non_dealer_utilities = []
+        all_non_dealer_wins = []
+        all_non_dealer_deal_in_rates = []
+        all_non_dealer_deal_in_loss_rates = []
+        all_non_dealer_missed_hu = []
+        all_non_dealer_fans = []
+        
+        for _ in range(num_trials):
+            trial_result = simulate_table(composition, cfg)
+            
+            if len(trial_result["defensive"]["profits"]) > 0:
+                all_def_profits.extend(trial_result["defensive"]["profits"])
+                all_def_utilities.extend(trial_result["defensive"]["utilities"])
+                all_def_win_rates.extend(trial_result["defensive"]["wins"])
+                all_def_deal_in_rates.extend(trial_result["defensive"]["deal_in_as_winner"])
+                all_def_missed_hu_rates.extend(trial_result["defensive"]["missed_hu"])
+                all_def_fans.extend(trial_result["defensive"]["fans"])
+            
+            if len(trial_result["aggressive"]["profits"]) > 0:
+                all_agg_profits.extend(trial_result["aggressive"]["profits"])
+                all_agg_utilities.extend(trial_result["aggressive"]["utilities"])
+                all_agg_win_rates.extend(trial_result["aggressive"]["wins"])
+                all_agg_deal_in_rates.extend(trial_result["aggressive"]["deal_in_as_winner"])
+                all_agg_missed_hu_rates.extend(trial_result["aggressive"]["missed_hu"])
+                all_agg_fans.extend(trial_result["aggressive"]["fans"])
+            
+            dealer_stats = trial_result["dealer"]
+            non_dealer_stats = trial_result["non_dealer"]
+            
+            all_dealer_profits.extend(dealer_stats["profits"])
+            all_dealer_utilities.extend(dealer_stats["utilities"])
+            all_dealer_wins.extend(dealer_stats["wins"])
+            all_dealer_deal_in_rates.extend(dealer_stats["deal_in_as_winner"])
+            all_dealer_deal_in_loss_rates.extend(dealer_stats["deal_in_as_loser"])
+            all_dealer_missed_hu.extend(dealer_stats["missed_hu"])
+            all_dealer_fans.extend(dealer_stats["fans"])
+            
+            all_non_dealer_profits.extend(non_dealer_stats["profits"])
+            all_non_dealer_utilities.extend(non_dealer_stats["utilities"])
+            all_non_dealer_wins.extend(non_dealer_stats["wins"])
+            all_non_dealer_deal_in_rates.extend(non_dealer_stats["deal_in_as_winner"])
+            all_non_dealer_deal_in_loss_rates.extend(non_dealer_stats["deal_in_as_loser"])
+            all_non_dealer_missed_hu.extend(non_dealer_stats["missed_hu"])
+            all_non_dealer_fans.extend(non_dealer_stats["fans"])
+        
+        results[composition] = {
+            "defensive": {
+                "mean_profit": np.mean(all_def_profits) if len(all_def_profits) > 0 else 0.0,
+                "std_profit": np.std(all_def_profits) if len(all_def_profits) > 0 else 0.0,
+                "mean_utility": np.mean(all_def_utilities) if len(all_def_utilities) > 0 else 0.0,
+                "std_utility": np.std(all_def_utilities) if len(all_def_utilities) > 0 else 0.0,
+                "win_rate": np.mean(all_def_win_rates) if len(all_def_win_rates) > 0 else 0.0,
+                "deal_in_rate": np.mean(all_def_deal_in_rates) if len(all_def_deal_in_rates) > 0 else 0.0,
+                "missed_hu_rate": np.mean(all_def_missed_hu_rates) if len(all_def_missed_hu_rates) > 0 else 0.0,
+                "mean_fan": np.mean(all_def_fans) if len(all_def_fans) > 0 else 0.0,
+                "fan_distribution": all_def_fans
+            },
+            "aggressive": {
+                "mean_profit": np.mean(all_agg_profits) if len(all_agg_profits) > 0 else 0.0,
+                "std_profit": np.std(all_agg_profits) if len(all_agg_profits) > 0 else 0.0,
+                "mean_utility": np.mean(all_agg_utilities) if len(all_agg_utilities) > 0 else 0.0,
+                "std_utility": np.std(all_agg_utilities) if len(all_agg_utilities) > 0 else 0.0,
+                "win_rate": np.mean(all_agg_win_rates) if len(all_agg_win_rates) > 0 else 0.0,
+                "deal_in_rate": np.mean(all_agg_deal_in_rates) if len(all_agg_deal_in_rates) > 0 else 0.0,
+                "missed_hu_rate": np.mean(all_agg_missed_hu_rates) if len(all_agg_missed_hu_rates) > 0 else 0.0,
+                "mean_fan": np.mean(all_agg_fans) if len(all_agg_fans) > 0 else 0.0,
+                "fan_distribution": all_agg_fans
+            },
+            "dealer": {
+                "mean_profit": np.mean(all_dealer_profits) if len(all_dealer_profits) > 0 else 0.0,
+                "std_profit": np.std(all_dealer_profits) if len(all_dealer_profits) > 0 else 0.0,
+                "mean_utility": np.mean(all_dealer_utilities) if len(all_dealer_utilities) > 0 else 0.0,
+                "std_utility": np.std(all_dealer_utilities) if len(all_dealer_utilities) > 0 else 0.0,
+                "win_rate": np.mean(all_dealer_wins) if len(all_dealer_wins) > 0 else 0.0,
+                "deal_in_rate": np.mean(all_dealer_deal_in_rates) if len(all_dealer_deal_in_rates) > 0 else 0.0,
+                "deal_in_loss_rate": np.mean(all_dealer_deal_in_loss_rates) if len(all_dealer_deal_in_loss_rates) > 0 else 0.0,
+                "missed_hu_rate": np.mean(all_dealer_missed_hu) if len(all_dealer_missed_hu) > 0 else 0.0,
+                "mean_fan": np.mean([f for f in all_dealer_fans if f > 0]) if len(all_dealer_fans) > 0 else 0.0,
+                "fan_distribution": all_dealer_fans
+            },
+            "non_dealer": {
+                "mean_profit": np.mean(all_non_dealer_profits) if len(all_non_dealer_profits) > 0 else 0.0,
+                "std_profit": np.std(all_non_dealer_profits) if len(all_non_dealer_profits) > 0 else 0.0,
+                "mean_utility": np.mean(all_non_dealer_utilities) if len(all_non_dealer_utilities) > 0 else 0.0,
+                "std_utility": np.std(all_non_dealer_utilities) if len(all_non_dealer_utilities) > 0 else 0.0,
+                "win_rate": np.mean(all_non_dealer_wins) if len(all_non_dealer_wins) > 0 else 0.0,
+                "deal_in_rate": np.mean(all_non_dealer_deal_in_rates) if len(all_non_dealer_deal_in_rates) > 0 else 0.0,
+                "deal_in_loss_rate": np.mean(all_non_dealer_deal_in_loss_rates) if len(all_non_dealer_deal_in_loss_rates) > 0 else 0.0,
+                "missed_hu_rate": np.mean(all_non_dealer_missed_hu) if len(all_non_dealer_missed_hu) > 0 else 0.0,
+                "mean_fan": np.mean([f for f in all_non_dealer_fans if f > 0]) if len(all_non_dealer_fans) > 0 else 0.0,
+                "fan_distribution": all_non_dealer_fans
+            }
+        }
+    
+    return results
+
+
+# ============================================================================
+# Single-Player Simulation Functions (convenience wrappers for 4-player table)
+# ============================================================================
+# Note: These functions are convenience wrappers that create a 4-player table
+# with 1 test player + 3 neutral players. They internally use the 4-player
+# table simulation functions.
+
+def simulate_round(player_strategy: Callable[[Union[int, float]], bool], 
+                  cfg: Dict[str, Any], is_dealer: bool = False) -> Dict[str, Union[float, int, bool]]:
+    """
+    Simulate a single round with 1 test player + 3 neutral players.
+    
+    This is a convenience wrapper that creates a 4-player table internally.
+    All Mahjong games are 4-player; this just simplifies the interface for
+    testing a single strategy.
+    
+    Args:
+        player_strategy: Strategy function that takes fan and returns bool
+        cfg: Configuration dictionary
+        is_dealer: Whether test player is dealer
+    
+    Returns:
+        Dictionary with round results for the test player only
+    """
+    from .players import NeutralPolicy
+    
+    # Determine strategy type for test player
+    fan_min = cfg.get("fan_min", 1)
+    fan_threshold = cfg.get("t_fan_threshold", 3)
+    test_strategy_type = "DEF"  # Default
+    if player_strategy(fan_min):
+        test_strategy_type = "DEF"
+    elif not player_strategy(fan_threshold - 1):
+        test_strategy_type = "AGG"
+    
+    # Create 4-player table: 1 test player + 3 neutral players
+    players = [
+        {"strategy": player_strategy, "strategy_type": test_strategy_type},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"}
+    ]
+    
+    # Simulate one round using 4-player table simulation
+    dealer_index = 0 if is_dealer else 1
+    round_results, _ = simulate_table_round(players, cfg, dealer_index)
+    
+    # Return only the test player's (first player's) results
+    return round_results[0]
+
+
+def run_simulation(strategy_fn: Callable[[Union[int, float]], bool], 
+                  cfg: Dict[str, Any], baseline_utility: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Run a single trial (multiple rounds) with 1 test player + 3 neutral players.
+    
+    This is a convenience wrapper that uses simulate_custom_table() internally.
+    All Mahjong games are 4-player; this just simplifies the interface.
+    
+    Args:
+        strategy_fn: Strategy function
+        cfg: Configuration dictionary
+        baseline_utility: Baseline emotional utility at start (defaults to cfg["baseline_utility"] or 50)
+    
+    Returns:
+        Dictionary with aggregated statistics for this trial
+    """
+    from .players import NeutralPolicy
+    
+    if baseline_utility is None:
+        baseline_utility = cfg.get("baseline_utility", 50)
+    
+    # Determine strategy type for test player
+    fan_min = cfg.get("fan_min", 1)
+    fan_threshold = cfg.get("t_fan_threshold", 3)
+    test_strategy_type = "DEF"  # Default
+    if strategy_fn(fan_min):
+        test_strategy_type = "DEF"
+    elif not strategy_fn(fan_threshold - 1):
+        test_strategy_type = "AGG"
+    
+    # Create 4-player table: 1 test player + 3 neutral players
+    players = [
+        {"strategy": strategy_fn, "strategy_type": test_strategy_type},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"}
+    ]
+    
+    # Use 4-player table simulation
+    table_result = simulate_custom_table(players, cfg, baseline_utility=baseline_utility)
+    
+    # Extract test player's (first player's) statistics
+    test_player_stats = table_result["per_player"][0]
+    
+    return {
+        "profit": test_player_stats["profit"],
+        "utility": test_player_stats["utility"],
+        "mean_fan": test_player_stats["mean_fan"],
+        "win_rate": test_player_stats["win_rate"],
+        "deal_in_rate": test_player_stats["deal_in_rate"],
+        "deal_in_loss_rate": test_player_stats["deal_in_loss_rate"],
+        "missed_win_rate": test_player_stats["missed_win_rate"],
+        "fan_distribution": test_player_stats["fan_distribution"]
+    }
+
+
+def run_multiple_trials(strategy_fn: Callable[[Union[int, float]], bool], 
+                       cfg: Dict[str, Any], num_trials: Optional[int] = None) -> Dict[str, Any]:
+    """
+    Run multiple trials with 1 test player + 3 neutral players.
+    
+    This is a convenience wrapper that uses simulate_custom_table() internally.
+    All Mahjong games are 4-player; this just simplifies the interface.
+    
+    Args:
+        strategy_fn: Strategy function
+        cfg: Configuration dictionary
+        num_trials: Number of trials (defaults to cfg["trials"])
+    
+    Returns:
+        Dictionary with aggregated statistics across all trials
+    """
+    if num_trials is None:
+        num_trials = cfg.get("trials")
+        if num_trials is None:
+            raise ValueError("trials must be specified in config")
+    
+    all_profits = []
+    all_utilities = []
+    all_mean_fans = []
+    all_win_rates = []
+    all_deal_in_rates = []
+    all_deal_in_loss_rates = []
+    all_missed_win_rates = []
+    all_fan_distributions = []
+    
+    for _ in range(num_trials):
+        result = run_simulation(strategy_fn, cfg)
+        all_profits.append(result["profit"])
+        all_utilities.append(result["utility"])
+        all_mean_fans.append(result["mean_fan"])
+        all_win_rates.append(result["win_rate"])
+        all_deal_in_rates.append(result["deal_in_rate"])
+        all_deal_in_loss_rates.append(result["deal_in_loss_rate"])
+        all_missed_win_rates.append(result["missed_win_rate"])
+        all_fan_distributions.extend(result["fan_distribution"])
+    
+    return {
+        "profits": np.array(all_profits),
+        "utilities": np.array(all_utilities),
+        "mean_fans": np.array(all_mean_fans),
+        "win_rates": np.array(all_win_rates),
+        "deal_in_rates": np.array(all_deal_in_rates),
+        "deal_in_loss_rates": np.array(all_deal_in_loss_rates),
+        "missed_win_rates": np.array(all_missed_win_rates),
+        "fan_distribution": np.array(all_fan_distributions),
+        "num_trials": num_trials
+    }

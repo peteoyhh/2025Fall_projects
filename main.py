@@ -3,7 +3,7 @@ import os
 import argparse
 import contextlib
 import yaml
-from mahjong_sim.simulation import run_multiple_trials
+from mahjong_sim.real_mc import run_multiple_trials
 from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
 from mahjong_sim.utils import compare_strategies, compute_statistics
 
@@ -14,28 +14,16 @@ def run_experiment_1(cfg):
     exp1.main()
 
 
-def run_experiment_2(cfg):
-    """Run Experiment 2: Utility Function Analysis"""
-    import experiments.run_experiment_2 as exp2
-    exp2.main()
-
-
 def run_experiment_3(cfg):
-    """Run Experiment 3: Table Composition Analysis"""
-    import experiments.run_experiment_3 as exp3
-    exp3.main()
+    """Run Experiment 3: Table Composition Analysis (4-player table)"""
+    import experiments.run_experiment_3_table as exp3t
+    exp3t.main()
 
 
 def run_experiment_4(cfg):
     """Run Experiment 4: Sensitivity Analysis"""
     import experiments.run_sensitivity as exp4
     exp4.main()
-
-
-def run_experiment_3_table(cfg):
-    """Run Experiment 3 Table: 4-player composition analysis"""
-    import experiments.run_experiment_3_table as exp3t
-    exp3t.main()
 
 
 def run_quick_demo(cfg):
@@ -103,8 +91,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--experiment",
         type=int,
-        choices=[1, 2, 3, 4],
-        help="Run specific experiment (1-4)"
+        choices=[1, 3, 4],
+        help="Run specific experiment (1, 3, or 4)"
     )
     parser.add_argument(
         "--all",
@@ -127,7 +115,6 @@ if __name__ == "__main__":
     elif args.experiment:
         experiment_map = {
             1: ("experiment1_output.txt", run_experiment_1),
-            2: ("experiment2_output.txt", run_experiment_2),
             3: ("experiment3_output.txt", run_experiment_3),
             4: ("experiment4_output.txt", run_experiment_4),
         }
@@ -146,12 +133,8 @@ if __name__ == "__main__":
                 print("Running all experiments...\n")
                 run_experiment_1(cfg)
                 print("\n\n")
-                run_experiment_2(cfg)
-                print("\n\n")
+                print("Running Experiment 3: 4-player table composition analysis...\n")
                 run_experiment_3(cfg)
-                print("\n\n")
-                print("Running 4-player table composition experiment...\n")
-                run_experiment_3_table(cfg)
                 print("\n\n")
                 run_experiment_4(cfg)
         print(f"\nCompleted all experiments. Output saved to {output_path}")

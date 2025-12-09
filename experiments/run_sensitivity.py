@@ -1,7 +1,7 @@
 import os
 import yaml
 import numpy as np
-from mahjong_sim.simulation import run_multiple_trials
+from mahjong_sim.real_mc import run_multiple_trials
 from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
 from mahjong_sim.utils import compute_statistics
 from mahjong_sim.plotting import ensure_dir, save_line_plot
@@ -30,13 +30,11 @@ def main():
         print(f"\nPenalty = {penalty}:")
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         
         def_stats = compute_statistics(results_def["profits"])
@@ -64,13 +62,11 @@ def main():
         print(f"\nAlpha = {alpha}:")
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         
         def_stats = compute_statistics(results_def["utilities"])
@@ -98,8 +94,7 @@ def main():
         print(f"\nThreshold = {threshold}:")
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, threshold),
-            cfg,
-            num_trials=10
+            cfg
         )
         
         agg_stats = compute_statistics(results_agg["profits"])
@@ -126,13 +121,11 @@ def main():
         print(f"\nBase points = {base}:")
         results_def = run_multiple_trials(
             lambda f: defensive_strategy(f, cfg["fan_min"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         results_agg = run_multiple_trials(
             lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
-            cfg,
-            num_trials=10
+            cfg
         )
         
         def_stats = compute_statistics(results_def["profits"])

@@ -2,9 +2,7 @@
 
 import numpy as np
 import pytest
-from mahjong_sim.table import (
-    adjust_risk_for_composition,
-    adjust_fan_growth_for_composition,
+from mahjong_sim.real_mc import (
     simulate_table,
     simulate_custom_table
 )
@@ -12,46 +10,8 @@ from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
 from mahjong_sim.players import NeutralPolicy
 
 
-def test_adjust_risk_for_composition():
-    """Test adjust_risk_for_composition function."""
-    base_risk = 0.5
-    
-    # All AGG players (0 DEF)
-    risk_0_def = adjust_risk_for_composition(base_risk, num_def_players=0)
-    assert risk_0_def == pytest.approx(0.5)  # No reduction
-    
-    # All DEF players (4 DEF)
-    risk_4_def = adjust_risk_for_composition(base_risk, num_def_players=4)
-    assert risk_4_def < base_risk  # Should be reduced
-    assert risk_4_def == pytest.approx(0.5 * 0.7)  # 30% reduction
-    
-    # Half DEF (2 DEF)
-    risk_2_def = adjust_risk_for_composition(base_risk, num_def_players=2)
-    assert risk_0_def > risk_2_def > risk_4_def  # Should be in between
-
-
-def test_adjust_fan_growth_for_composition():
-    """Test adjust_fan_growth_for_composition function."""
-    base_fan = 4
-    
-    # All DEF players (4 DEF)
-    fan_4_def = adjust_fan_growth_for_composition(base_fan, num_def_players=4)
-    assert fan_4_def == base_fan  # No growth
-    
-    # All AGG players (0 DEF)
-    fan_0_def = adjust_fan_growth_for_composition(base_fan, num_def_players=0)
-    assert fan_0_def >= base_fan  # Should be increased or same
-    # 20% growth: 4 * 1.2 = 4.8, int(4.8) = 4, so might be same
-    # Let's just check it's reasonable
-    assert fan_0_def <= 16  # Should not exceed cap
-    
-    # Test with larger base_fan to see growth
-    fan_10_0_def = adjust_fan_growth_for_composition(10, num_def_players=0)
-    assert fan_10_0_def > 10  # Should be increased: 10 * 1.2 = 12
-    
-    # Test cap
-    high_fan = adjust_fan_growth_for_composition(15, num_def_players=0)
-    assert high_fan <= 16  # Should be capped at 16
+# Note: adjust_risk_for_composition and adjust_fan_growth_for_composition
+# functions were removed as they were not part of the core simulation logic.
 
 
 def test_simulate_table_basic():

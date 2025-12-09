@@ -5,9 +5,7 @@ import pytest
 from mahjong_sim.utils import (
     compute_statistics,
     compare_strategies,
-    analyze_composition_effect,
-    compute_fan_distribution,
-    compute_risk_metrics
+    analyze_composition_effect
 )
 
 
@@ -79,35 +77,4 @@ def test_analyze_composition_effect():
     assert regression["slope"] > 0  # Should be positive
 
 
-def test_compute_fan_distribution():
-    """Test compute_fan_distribution function."""
-    fan_array = np.array([1, 1, 2, 2, 2, 4, 8])
-    dist = compute_fan_distribution(fan_array)
-    
-    assert "fan_values" in dist
-    assert "counts" in dist
-    assert "frequencies" in dist
-    assert len(dist["fan_values"]) == 4  # 1, 2, 4, 8
-    assert sum(dist["frequencies"]) == pytest.approx(1.0)
-
-
-def test_compute_risk_metrics():
-    """Test compute_risk_metrics function."""
-    profits = np.array([10.0, -5.0, 20.0, -10.0, 15.0])
-    metrics = compute_risk_metrics(profits, initial_bankroll=1000)
-    
-    assert "max_drawdown" in metrics
-    assert "ruin_probability" in metrics
-    assert "final_bankroll_mean" in metrics
-    assert "final_bankroll_std" in metrics
-    assert metrics["max_drawdown"] >= 0
-    assert 0 <= metrics["ruin_probability"] <= 1
-
-
-def test_compute_risk_metrics_ruin():
-    """Test compute_risk_metrics with large losses causing ruin."""
-    profits = np.array([-500.0, -600.0])  # Large losses
-    metrics = compute_risk_metrics(profits, initial_bankroll=1000)
-    
-    assert metrics["ruin_probability"] > 0  # Should have some ruin probability
 

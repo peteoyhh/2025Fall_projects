@@ -152,12 +152,30 @@ Each simulation trial consists of **20 rounds per player** (configurable via `ro
 
 | **Experiment** | **Variable Manipulated** | **Purpose** |
 |-----------------|--------------------------|-------------|
-| 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) |
-| 2. Utility function analysis | Apply nonlinear utility U(score) with CRRA or weighted penalties | Test H2 (utility difference) |
+| 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) and H2 (utility difference with CRRA utility) |
 | 3. Table composition sweep | Vary proportion of DEF players, theta = 0, 0.33, 0.67, 1 | Test H3 (composition threshold) |
 | 4. Sensitivity analysis | Vary P (deal-in penalty), alpha (fan growth rate), and total fan | Examine robustness of conclusions |
 
 **Utility function:**
+
+The utility function uses a concave reward function with penalties:
+
+```
+U(profit, fan, missed_hu, deal_in) = {
+    sqrt(profit) * 3                    if profit > 0 and fan < 2
+    sqrt(profit) * 3 * 3                if profit > 0 and fan >= 2
+    -sqrt(|profit|) * 3                 if profit < 0
+    0                                    if profit == 0
+} - missed_penalty - deal_in_penalty
+```
+
+Where:
+- `missed_penalty = 0.2` (penalty for missing a possible Hu)
+- `deal_in_penalty = 0.5` (penalty for dealing in as loser)
+- Players start with a `baseline_utility = 50` (configurable in `base.yaml`)
+
+The utility function rewards high-fan wins (fan >= 2) with a 3x multiplier, making aggressive strategies potentially more rewarding despite lower win rates.
+
 ---
 
 ### Phase 3 – Analysis
@@ -175,6 +193,157 @@ Statistical comparisons between strategy types use **two-sample t-tests** and **
 For composition analysis (H3), we run a **regression of profit against theta** (the proportion of defensive opponents) to detect sign changes that indicate the critical threshold of player compositions.  
 
 All experiments use **modular Python code** and configuration-driven runs via YAML inputs.
+
+---
+
+## 🚀 Getting Started
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### Configuration
+
+All simulation parameters are configured in `configs/base.yaml`:
+
+```yaml
+base_points: 1              # Base point value for scoring (B in Score = B * 2^fan)
+fan_min: 1                  # Minimum fan for defensive strategy (Pi Hu = 1 fan)
+t_fan_threshold: 3          # Fan threshold for aggressive strategy
+alpha: 0.5                  # Utility weight parameter (currently unused in utility calculation)
+penalty_deal_in: 3          # Deal-in penalty multiplier
+rounds_per_trial: 20        # Number of rounds per trial
+trials: 10                  # Number of trials to run
+baseline_utility: 50        # Starting utility value (added to cumulative utility)
+```
+
+### Running Experiments
+
+**Run a specific experiment:**
+```bash
+python main.py --experiment 1    # Strategy comparison
+python main.py --experiment 3    # Table composition analysis
+python main.py --experiment 4    # Sensitivity analysis
+```
+
+**Run all experiments:**
+```bash
+python main.py --all
+```
+
+**Quick demo (single trial):**
+```bash
+python main.py --demo
+```
+
+### Running Tests
+
+**Run all tests with coverage:**
+```bash
+pytest tests/ --cov=mahjong_sim --cov-report=term-missing --cov-report=html
+```
+
+**Run tests without coverage:**
+```bash
+pytest tests/ -v
+```
+
+**View coverage report:**
+```bash
+open htmlcov/index.html
+```
+
+**Test coverage:** Currently **65.56%** (exceeds 60% requirement)
+
+---
+
+## 📁 Project Structure
+
+```
+597PRFINAL/
+├── configs/
+│   └── base.yaml              # Configuration file for all experiments
+├── experiments/
+│   ├── run_experiment_1.py   # Strategy comparison experiment
+│   ├── run_experiment_3_table.py  # Table composition analysis
+│   └── run_sensitivity.py    # Sensitivity analysis
+├── mahjong_sim/
+│   ├── __init__.py
+│   ├── real_mc.py            # Core Monte Carlo simulation engine
+│   ├── scoring.py            # Scoring functions (score, profit, cost)
+│   ├── strategies.py         # Strategy functions (defensive/aggressive)
+│   ├── players.py            # Player classes and NeutralPolicy
+│   ├── utils.py              # Statistical utilities and comparisons
+│   └── plotting.py           # Visualization functions
+├── tests/
+│   ├── test_simulation.py     # Basic simulation tests
+│   ├── test_simulation_extended.py  # Extended simulation tests
+│   ├── test_strategies.py    # Strategy function tests
+│   ├── test_scoring.py       # Scoring function tests
+│   ├── test_players.py       # Player and NeutralPolicy tests
+│   ├── test_table.py         # Table simulation tests
+│   └── test_utils.py          # Utility and statistics tests
+├── output/                    # Experiment output files
+├── plots/                     # Generated plots and visualizations
+├── main.py                    # Main entry point for running experiments
+├── pytest.ini                 # Pytest configuration
+└── requirements.txt           # Python dependencies
+```
+
+---
+
+## 📊 Output and Visualization
+
+### Experiment Outputs
+
+All experiment outputs are saved to the `output/` directory:
+- `experiment1_output.txt`: Strategy comparison results
+- `experiment3_output.txt`: Table composition analysis results
+- `experiment4_output.txt`: Sensitivity analysis results
+
+### Generated Plots
+
+Plots are saved to the `plots/` directory:
+
+**Experiment 1 (Strategy Comparison):**
+- `profit_comparison.png`: Bar chart comparing profits
+- `utility_comparison.png`: Bar chart comparing utilities
+- `profit_vs_utility.png`: Scatter plot with regression lines
+- `utility_distribution.png`: KDE plot showing utility distributions by strategy
+- `win_rate_comparison.png`: Win rate comparison
+- `fan_distribution.png`: Fan distribution histogram
+
+**Experiment 3 (Table Composition):**
+- `profit_vs_theta_combined.png`: Profit vs composition (both strategies)
+- `utility_vs_theta_combined.png`: Utility vs composition (both strategies)
+- `win_rate_vs_theta_combined.png`: Win rate vs composition
+- `dealer_vs_non_dealer_profit.png`: Dealer vs non-dealer comparison
+
+**Experiment 4 (Sensitivity Analysis):**
+- `profit_vs_penalty.png`: Profit vs deal-in penalty
+- `utility_vs_alpha.png`: Utility vs alpha parameter
+- `profit_vs_threshold.png`: Profit vs fan threshold
+
+---
+
+## 🧪 Testing
+
+The project includes comprehensive unit tests with **65.56% code coverage** (exceeding the 60% requirement).
+
+**Test files:**
+- `test_simulation.py`: Basic simulation functionality
+- `test_simulation_extended.py`: Extended tests including utility calculation
+- `test_strategies.py`: Strategy function tests
+- `test_scoring.py`: Scoring function tests
+- `test_players.py`: Player and NeutralPolicy tests
+- `test_table.py`: Table simulation tests
+- `test_utils.py`: Statistical utility tests
+
+See `tests/README.md` for detailed testing instructions.
 
 ---
 

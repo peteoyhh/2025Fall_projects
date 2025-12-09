@@ -1,4 +1,4 @@
-from mahjong_sim.simulation import run_simulation
+from mahjong_sim.real_mc import run_simulation
 from mahjong_sim.strategies import defensive_strategy
 
 

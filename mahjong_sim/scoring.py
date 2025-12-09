@@ -72,17 +72,3 @@ def compute_loser_cost(score: float, penalty_multiplier: float, is_deal_in_loser
         return -score
 
 
-def compute_total_fan(base_fan: int, kong_count: int, max_total_fan: int = 16) -> int:
-    """
-    Compute total fan including Kong bonuses, with hard cap.
-    
-    Args:
-        base_fan: Base fan value from hand pattern
-        kong_count: Number of Kong events
-        max_total_fan: Maximum allowed total fan (default: 16)
-    
-    Returns:
-        Total fan count (capped at max_total_fan to prevent explosion)
-    """
-    total = base_fan + kong_count
-    return min(total, max_total_fan)
