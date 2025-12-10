@@ -85,7 +85,6 @@ pytest pytest/ -v
 open htmlcov/index.html
 ```
 
-**Test coverage:** Currently **65.56%** (exceeds 60% requirement)
 
 ---
 
