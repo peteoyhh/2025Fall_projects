@@ -135,8 +135,6 @@ if __name__ == "__main__":
                 print("\n\n")
                 print("Running Experiment 3: 4-player table composition analysis...\n")
                 run_experiment_3(cfg)
-                print("\n\n")
-                run_experiment_4(cfg)
         print(f"\nCompleted all experiments. Output saved to {output_path}")
     else:
         # Default: run quick demo

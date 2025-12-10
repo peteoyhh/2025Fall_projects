@@ -9,7 +9,12 @@ This is the unified simulation module that combines:
 - All experiment interfaces
 
 All simulation uses actual tile-based gameplay with 136 tiles.
+The authors used AI-assisted tools (OpenAI ChatGPT) to support text refinement, structural organization, 
+and grammar editing during manuscript preparation. AI tools were not used for generating research ideas, 
+analyzing data, conducting experiments, or drawing conclusions. All methodological decisions, analytical 
+results, and interpretations were fully developed and validated by the authors
 """
+
 
 import numpy as np
 from typing import List, Dict, Tuple, Optional, Set, Callable, Union, Any
