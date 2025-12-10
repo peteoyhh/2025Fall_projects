@@ -230,7 +230,7 @@ t_fan_threshold: 3          # Fan threshold for aggressive strategy
 alpha: 0.5                  # Utility weight parameter (currently unused in utility calculation)
 penalty_deal_in: 3          # Deal-in penalty multiplier
 rounds_per_trial: 20        # Number of rounds per trial
-trials: 10                  # Number of trials to run (10-100 is the most optimal,beyond 100 is time consuming)
+trials: 10                  # Number of trials to run (10-50 is the most optimal,beyond 50 is time consuming)
 baseline_utility: 50        # Starting utility value (added to cumulative utility)
 
 ```
@@ -302,43 +302,6 @@ open htmlcov/index.html
 ├── pytest.ini                 # Pytest configuration
 └── requirements.txt           # Python dependencies
 ```
-
----
-
-## 📊 Output and Visualization
-
-### Experiment Outputs
-
-All experiment outputs are saved to the `output/` directory:
-- `experiment1_output.txt`: Strategy comparison results
-- `experiment3_output.txt`: Table composition analysis results
-- `experiment4_output.txt`: Sensitivity analysis results
-
-### Generated Plots
-
-Plots are saved to the `plots/` directory:
-
-**Experiment 1 (Strategy Comparison):**
-- `profit_comparison.png`: Bar chart comparing profits
-- `utility_comparison.png`: Bar chart comparing utilities
-- `profit_vs_utility.png`: Scatter plot with regression lines
-- `utility_distribution.png`: KDE plot showing utility distributions by strategy
-- `win_rate_comparison.png`: Win rate comparison
-- `fan_distribution.png`: Fan distribution histogram
-
-**Experiment 3 (Table Composition):**
-- `profit_vs_theta_combined.png`: Profit vs composition (both strategies)
-- `utility_vs_theta_combined.png`: Utility vs composition (both strategies)
-- `win_rate_vs_theta_combined.png`: Win rate vs composition
-- `dealer_vs_non_dealer_profit.png`: Dealer vs non-dealer comparison
-
-**Experiment 4 (Sensitivity Analysis):**
-- `profit_vs_penalty.png`: Profit vs deal-in penalty (P = 1, 3, 5) for both strategies
-- `utility_vs_alpha.png`: Utility vs alpha parameter (α = 0.1, 0.5, 0.9) for both strategies
-- `profit_vs_threshold.png`: Profit vs fan threshold (t_fan_threshold = 1, 3, 5) for aggressive strategy
-- `utility_vs_threshold.png`: Utility vs fan threshold (t_fan_threshold = 1, 3, 5) for aggressive strategy
-
-Each parameter is tested at 3 values (low, medium, high) to examine robustness across parameter ranges.
 
 ---
 
