@@ -41,13 +41,13 @@ pip install -r requirements.txt
 All simulation parameters are configured in `configs/base.yaml`:
 
 ```yaml
-base_points: 1              # Base point value for scoring (B in Score = B * 2^fan)
+base_points: 10              # Base point value for scoring (B in Score = B * 2^fan)
 fan_min: 1                  # Minimum fan for defensive strategy (Pi Hu = 1 fan)
 t_fan_threshold: 3          # Fan threshold for aggressive strategy
-alpha: 0.5                  # Utility weight parameter (currently unused in utility calculation)
+alpha: 0.5                  # Utility weight parameter (missing_hu utility)
 penalty_deal_in: 3          # Deal-in penalty multiplier
 rounds_per_trial: 20        # Number of rounds per trial
-trials: 10                  # Number of trials to run (10-50 is the most optimal,beyond 50 is time consuming)
+trials: 50                  # Number of trials to run (10-50 is the most optimal,beyond 50 is time consuming)
 baseline_utility: 50        # Starting utility value (added to cumulative utility)
 
 ```
