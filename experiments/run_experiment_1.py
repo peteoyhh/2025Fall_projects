@@ -5,7 +5,7 @@ import numpy as np
 from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
 from mahjong_sim.real_mc import simulate_custom_table
 from mahjong_sim.players import NeutralPolicy
-from mahjong_sim.plotting import ensure_dir, save_bar_plot, save_hist, save_scatter_plot, save_kde_plot
+from mahjong_sim.plotting import ensure_dir, save_bar_plot, save_hist, save_scatter_plot, save_kde_plot, save_stacked_fan_distribution
 from mahjong_sim.utils import compare_strategies
 
 # Add project root to Python path
@@ -215,25 +215,19 @@ def main():
         label2="Aggressive"
     )
     
-    # Histogram: Fan distribution (combined from both strategies)
-    all_fans = []
-    if len(def_results['fan_distribution']) > 0:
-        all_fans.extend(def_results['fan_distribution'])
-    if len(agg_results['fan_distribution']) > 0:
-        all_fans.extend(agg_results['fan_distribution'])
+    # Stacked bar chart: Fan distribution separated by strategy
+    def_fans = def_results['fan_distribution'] if len(def_results['fan_distribution']) > 0 else []
+    agg_fans = agg_results['fan_distribution'] if len(agg_results['fan_distribution']) > 0 else []
     
-    if len(all_fans) > 0:
-        # Filter out zeros for fan distribution
-        all_fans = [f for f in all_fans if f > 0]
-        if len(all_fans) > 0:
-            save_hist(
-                all_fans,
-                "Fan Distribution (Tested Players)",
-                os.path.join(plot_dir, "fan_distribution.png"),
-                xlabel="Fan Value",
-                ylabel="Frequency",
-                bins=15
-            )
+    if len(def_fans) > 0 or len(agg_fans) > 0:
+        save_stacked_fan_distribution(
+            def_fans,
+            agg_fans,
+            "Fan Distribution by Strategy",
+            os.path.join(plot_dir, "fan_distribution.png"),
+            xlabel="Fan Value",
+            ylabel="Frequency"
+        )
     
     print(f"\nPlots saved to: {plot_dir}")
 

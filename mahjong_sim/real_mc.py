@@ -45,7 +45,7 @@ def compute_utility(profit: float, missed_hu: bool, deal_in_as_loser: bool,
     - Utility is monotone increasing with profit
     - Penalties are minimal and do not overpower rewards
     - Winners always have strongly positive utility contribution
-    - From fan >= 2, utility reward is multiplied by 10
+    - From fan >= 3, utility reward is multiplied by 2
     
     Args:
         profit: Profit from the hand (can be negative if lost)
@@ -59,14 +59,15 @@ def compute_utility(profit: float, missed_hu: bool, deal_in_as_loser: bool,
         Utility value
     """
     # Base utility calculation: sqrt(profit) * 3
-    # Then multiply by 3 again if fan >= 2 (total 9x for fan >= 2)
+    # Then multiply by 2 again if fan >= 3 (total 6x for fan >= 3)
     if profit > 0:
-        # Positive profit: sqrt(profit) * 3
+        # Positive profit: sqrt(profit) * 3, we used sqrt to show the diminishing returns
+        # of utility on keep winning, and times it by 3 to make it more repersentable on scale. 
         utility = np.sqrt(profit) * 3
         
-        # Multiply utility reward by 3 again for fan >= 2 (total 9x)
-        if fan >= 2:
-            utility *= 3
+        # Multiply utility reward by 2 again for fan >= 3 (total 6x)
+        if fan >= 3:
+            utility *= 2
     elif profit < 0:
         # Negative profit: -sqrt(abs(profit)) * 3
         utility = -np.sqrt(abs(profit)) * 3

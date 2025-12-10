@@ -434,3 +434,91 @@ def save_multi_bar_plot(labels, data_dict, title, outfile, ylabel="Value"):
     plt.savefig(outfile, dpi=200, bbox_inches='tight')
     plt.close()
 
+
+def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fan Value", ylabel="Frequency"):
+    """
+    Save a stacked bar chart for fan distribution with DEF and AGG counts, plus a total bar.
+    
+    Args:
+        def_fans: List/array of fan values for defensive strategy (filter out 0)
+        agg_fans: List/array of fan values for aggressive strategy (filter out 0)
+        title: Plot title
+        outfile: Output file path
+        xlabel: X-axis label
+        ylabel: Y-axis label
+    """
+    # Filter out zeros and convert to arrays
+    def_fans = np.array([f for f in def_fans if f > 0])
+    agg_fans = np.array([f for f in agg_fans if f > 0])
+    
+    if len(def_fans) == 0 and len(agg_fans) == 0:
+        print(f"Warning: No valid fan data for stacked distribution: {title}")
+        return
+    
+    # Get all unique fan values
+    all_fans = np.concatenate([def_fans, agg_fans]) if len(def_fans) > 0 and len(agg_fans) > 0 else (def_fans if len(def_fans) > 0 else agg_fans)
+    unique_fans = np.unique(all_fans)
+    unique_fans = np.sort(unique_fans)
+    
+    # Count occurrences for each fan value
+    def_counts = [np.sum(def_fans == f) for f in unique_fans]
+    agg_counts = [np.sum(agg_fans == f) for f in unique_fans]
+    total_counts = [d + a for d, a in zip(def_counts, agg_counts)]
+    
+    # Calculate overall total
+    overall_total = len(def_fans) + len(agg_fans)
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    # X positions for bars
+    x_pos = np.arange(len(unique_fans) + 1)  # +1 for total bar
+    
+    # Colors: green for DEF, red for AGG, gray for total
+    def_color = 'green'
+    agg_color = 'red'
+    total_color = 'gray'
+    
+    # Plot stacked bars for each fan value
+    bottom = np.zeros(len(unique_fans))
+    
+    # DEF bars (bottom)
+    def_bars = ax.bar(x_pos[:-1], def_counts, bottom=bottom, label='Defensive', 
+                      color=def_color, alpha=0.7, edgecolor='black', linewidth=1)
+    
+    # AGG bars (on top of DEF)
+    agg_bars = ax.bar(x_pos[:-1], agg_counts, bottom=def_counts, label='Aggressive', 
+                      color=agg_color, alpha=0.7, edgecolor='black', linewidth=1)
+    
+    # Total bar (at the end)
+    total_bar = ax.bar(x_pos[-1], overall_total, label='Total', 
+                       color=total_color, alpha=0.7, edgecolor='black', linewidth=1)
+    
+    # Add value labels on bars
+    for i, (d, a, t) in enumerate(zip(def_counts, agg_counts, total_counts)):
+        if d > 0:
+            ax.text(x_pos[i], d/2, str(d), ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+        if a > 0:
+            ax.text(x_pos[i], d + a/2, str(a), ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+        if t > 0:
+            ax.text(x_pos[i], d + a, str(t), ha='center', va='bottom', fontsize=9, fontweight='bold')
+    
+    # Label for total bar
+    ax.text(x_pos[-1], overall_total/2, str(overall_total), ha='center', va='center', 
+            fontsize=10, fontweight='bold', color='white')
+    
+    # Set x-axis labels
+    x_labels = [str(int(f)) for f in unique_fans] + ['Total']
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(x_labels)
+    
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.legend()
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=200, bbox_inches='tight')
+    plt.close()
+

@@ -19,7 +19,7 @@ def main():
     print("\n" + "-" * 60)
     print("SENSITIVITY TO DEAL-IN PENALTY (P):")
     print("-" * 60)
-    penalty_values = [1, 2, 3, 4, 5]
+    penalty_values = [1, 3, 5]
     penalty_def_profits = []
     penalty_agg_profits = []
     
@@ -51,7 +51,7 @@ def main():
     print("\n" + "-" * 60)
     print("SENSITIVITY TO ALPHA (utility weight):")
     print("-" * 60)
-    alpha_values = [0.1, 0.3, 0.5, 0.7, 0.9]
+    alpha_values = [0.1, 0.5, 0.9]
     alpha_def_utilities = []
     alpha_agg_utilities = []
     
@@ -83,7 +83,7 @@ def main():
     print("\n" + "-" * 60)
     print("SENSITIVITY TO FAN THRESHOLD (t_fan_threshold):")
     print("-" * 60)
-    threshold_values = [1, 2, 3, 4, 5]
+    threshold_values = [1, 3, 5]
     threshold_agg_profits = []
     threshold_agg_utilities = []
     

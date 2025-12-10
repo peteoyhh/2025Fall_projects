@@ -154,16 +154,16 @@ Each simulation trial consists of **20 rounds per player** (configurable via `ro
 |-----------------|--------------------------|-------------|
 | 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) and H2 (utility difference with CRRA utility) |
 | 3. Table composition sweep | Vary proportion of DEF players, theta = 0, 0.33, 0.67, 1 | Test H3 (composition threshold) |
-| 4. Sensitivity analysis | Vary P (deal-in penalty), alpha (fan growth rate), and total fan | Examine robustness of conclusions |
+| 4. Sensitivity analysis | Vary P (deal-in penalty: [1, 3, 5]), alpha ([0.1, 0.5, 0.9]), fan threshold ([1, 3, 5]), and base points ([1, 2, 4]) | Examine robustness of conclusions across parameter ranges |
 
 **Utility function:**
 
-The utility function uses a concave reward function with penalties:
+The utility function uses a concave reward function with penalties. For each round, the utility change is computed as:
 
 ```
-U(profit, fan, missed_hu, deal_in) = {
-    sqrt(profit) * 3                    if profit > 0 and fan < 2
-    sqrt(profit) * 3 * 3                if profit > 0 and fan >= 2
+U_round(profit, fan, missed_hu, deal_in) = {
+    sqrt(profit) * 3                    if profit > 0 and fan < 3
+    sqrt(profit) * 3 * 2                if profit > 0 and fan >= 3
     -sqrt(|profit|) * 3                 if profit < 0
     0                                    if profit == 0
 } - missed_penalty - deal_in_penalty
@@ -172,9 +172,22 @@ U(profit, fan, missed_hu, deal_in) = {
 Where:
 - `missed_penalty = 0.2` (penalty for missing a possible Hu)
 - `deal_in_penalty = 0.5` (penalty for dealing in as loser)
-- Players start with a `baseline_utility = 50` (configurable in `base.yaml`)
+- `fan`: Fan count of the winning hand (used for bonus multiplier when fan >= 3)
 
-The utility function rewards high-fan wins (fan >= 2) with a 3x multiplier, making aggressive strategies potentially more rewarding despite lower win rates.
+**Total utility per trial** is calculated as:
+```
+U_total = baseline_utility + Σ(U_round for all rounds)
+```
+
+Where:
+- `baseline_utility = 50` (configurable in `base.yaml`) - starting utility value added to cumulative utility
+- Each round's utility change (`U_round`) is computed based on that round's profit and added to the cumulative total
+
+**Key design principles:**
+- The square root function (`sqrt`) creates diminishing returns, reflecting that additional profit provides less utility gain
+- The base multiplier `* 3` scales the utility to a more representative scale
+- High-fan wins (fan >= 3) receive a 2x bonus multiplier, making aggressive strategies potentially more rewarding despite lower win rates
+- Penalties are minimal and do not overpower the concave rewards
 
 ---
 
@@ -217,8 +230,9 @@ t_fan_threshold: 3          # Fan threshold for aggressive strategy
 alpha: 0.5                  # Utility weight parameter (currently unused in utility calculation)
 penalty_deal_in: 3          # Deal-in penalty multiplier
 rounds_per_trial: 20        # Number of rounds per trial
-trials: 10                  # Number of trials to run
+trials: 10                  # Number of trials to run (10-100 is the most optimal,beyond 100 is time consuming)
 baseline_utility: 50        # Starting utility value (added to cumulative utility)
+
 ```
 
 ### Running Experiments
@@ -319,9 +333,12 @@ Plots are saved to the `plots/` directory:
 - `dealer_vs_non_dealer_profit.png`: Dealer vs non-dealer comparison
 
 **Experiment 4 (Sensitivity Analysis):**
-- `profit_vs_penalty.png`: Profit vs deal-in penalty
-- `utility_vs_alpha.png`: Utility vs alpha parameter
-- `profit_vs_threshold.png`: Profit vs fan threshold
+- `profit_vs_penalty.png`: Profit vs deal-in penalty (P = 1, 3, 5) for both strategies
+- `utility_vs_alpha.png`: Utility vs alpha parameter (α = 0.1, 0.5, 0.9) for both strategies
+- `profit_vs_threshold.png`: Profit vs fan threshold (t_fan_threshold = 1, 3, 5) for aggressive strategy
+- `utility_vs_threshold.png`: Utility vs fan threshold (t_fan_threshold = 1, 3, 5) for aggressive strategy
+
+Each parameter is tested at 3 values (low, medium, high) to examine robustness across parameter ranges.
 
 ---
 

@@ -143,22 +143,22 @@ def test_run_multiple_trials_custom_num():
 
 
 def test_compute_utility_with_fan_bonus():
-    """Test utility computation with fan >= 2 bonus multiplier."""
-    # Without fan bonus (fan < 2)
-    utility_low_fan = compute_utility(profit=100.0, missed_hu=False, deal_in_as_loser=False, fan=1)
-    # With fan bonus (fan >= 2)
-    utility_high_fan = compute_utility(profit=100.0, missed_hu=False, deal_in_as_loser=False, fan=2)
+    """Test utility computation with fan >= 3 bonus multiplier."""
+    # Without fan bonus (fan < 3)
+    utility_low_fan = compute_utility(profit=100.0, missed_hu=False, deal_in_as_loser=False, fan=2)
+    # With fan bonus (fan >= 3)
+    utility_high_fan = compute_utility(profit=100.0, missed_hu=False, deal_in_as_loser=False, fan=3)
     
-    # High fan should be 3x the low fan utility
-    assert utility_high_fan == pytest.approx(utility_low_fan * 3, abs=0.01)
+    # High fan should be 2x the low fan utility
+    assert utility_high_fan == pytest.approx(utility_low_fan * 2, abs=0.01)
     assert utility_high_fan > utility_low_fan
 
 
 def test_compute_utility_fan_3():
     """Test utility computation with fan = 3."""
     utility = compute_utility(profit=100.0, missed_hu=False, deal_in_as_loser=False, fan=3)
-    # Should be sqrt(100) * 3 * 3 = 10 * 3 * 3 = 90
-    assert utility == pytest.approx(90.0, abs=0.01)
+    # Should be sqrt(100) * 3 * 2 = 10 * 3 * 2 = 60
+    assert utility == pytest.approx(60.0, abs=0.01)
 
 
 def test_compute_utility_combined_penalties():
@@ -167,10 +167,10 @@ def test_compute_utility_combined_penalties():
         profit=100.0, 
         missed_hu=True, 
         deal_in_as_loser=True,
-        fan=2
+        fan=3
     )
-    # Base: sqrt(100) * 3 * 3 = 90
+    # Base: sqrt(100) * 3 * 2 = 60
     # Penalties: -0.2 - 0.5 = -0.7
-    # Expected: 90 - 0.7 = 89.3
-    assert utility == pytest.approx(89.3, abs=0.01)
+    # Expected: 60 - 0.7 = 59.3
+    assert utility == pytest.approx(59.3, abs=0.01)
 
