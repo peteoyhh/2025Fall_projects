@@ -31,10 +31,7 @@ from .scoring import (
 )
 from .strategies import defensive_strategy, aggressive_strategy
 
-# Initialize random seed based on current time to ensure different results on each run
-# This ensures that each program execution produces different random sequences
-random.seed(int(time.time() * 1000000) % (2**32))
-np.random.seed(int(time.time() * 1000000) % (2**32))
+
 
 
 def compute_utility(profit: float, missed_hu: bool, deal_in_as_loser: bool, 
