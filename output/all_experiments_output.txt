@@ -12,55 +12,38 @@ Total rounds: 2000
 
 Defensive Strategy Results:
   (All values are averages across all trials)
-  Profit: 623.20
-  Utility: 115.52
-  Win Rate: 0.1730
-  Deal-in Rate: 0.0900
-  Mean Fan: 1.70
+  Profit: 680.40
+  Win Rate: 0.2010
+  Deal-in Rate: 0.1100
+  Mean Fan: 1.83
 
 Aggressive Strategy Results:
   (All values are averages across all trials)
-  Profit: 502.80
-  Utility: 89.80
-  Win Rate: 0.0640
-  Deal-in Rate: 0.0200
-  Mean Fan: 2.23
-
-------------------------------------------------------------
-STATISTICAL COMPARISON:
-------------------------------------------------------------
-Defensive Strategy:
-  Mean Utility: 115.52
-  95% CI: [56.84, 174.21]
-
-Aggressive Strategy:
-  Mean Utility: 89.80
-  95% CI: [29.16, 150.45]
-
-Difference (Agg - Def): -25.72
-t-statistic: 0.6125
-p-value: 0.541625
+  Profit: 460.00
+  Win Rate: 0.0750
+  Deal-in Rate: 0.0310
+  Mean Fan: 2.62
 
 ------------------------------------------------------------
 PROFIT COMPARISON:
 ------------------------------------------------------------
-Defensive Mean: 623.20
-Aggressive Mean: 502.80
-Difference (Def - Agg): 120.40
-t-statistic: 0.5007
-p-value: 0.617707
+Defensive Mean: 680.40
+Aggressive Mean: 460.00
+Difference (Def - Agg): 220.40
+t-statistic: 1.1258
+p-value: 0.262994
 
 ============================================================
 
-Plots saved to: /Users/xuchen/597PRFINAL/plots/experiment_1
+Plots saved to: /Users/BohanShan/Desktop/2025Fall_projects/plots/experiment_1
 
 
 
-Running Experiment 3: 4-player table composition analysis...
+Running Experiment 2: 4-player table composition analysis...
 
 ======================================================================
-Experiment 3: 4-Player Table Composition Analysis
-Testing H3: Strategy performance depends on opponent composition (θ)
+Experiment 2: 4-Player Table Composition Analysis
+Testing H2: Strategy performance depends on opponent composition (θ)
 ======================================================================
 
 Running 50 trials per composition (5 compositions)
@@ -84,30 +67,27 @@ Composition θ=0: 0 DEF, 4 AGG
 
 AGGRESSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 912.00 ± 1488.52
-  Mean Utility: 190.97 ± 232.13
-  Win Rate: 0.0958
-  Deal-in Rate (as winner): 0.0285
-  Missed Hu Rate: 0.0182
-  Mean Fan (when winning): 3.30
+  Mean Profit: 936.00 ± 1527.62
+  Win Rate: 0.1018
+  Deal-in Rate (as winner): 0.0310
+  Missed Hu Rate: 0.0180
+  Mean Fan (when winning): 3.28
 
 DEALER ROUNDS:
   (All values are averages across all dealer rounds)
-  Mean Profit: 72.56 ± 372.74
-  Mean Utility: 12.20 ± 58.89
-  Win Rate: 0.1220
-  Deal-in Rate (as winner): 0.0340
-  Deal-in Loss Rate: 0.0230
-  Missed Hu Rate: 0.0250
+  Mean Profit: 52.32 ± 298.93
+  Win Rate: 0.1170
+  Deal-in Rate (as winner): 0.0380
+  Deal-in Loss Rate: 0.0300
+  Missed Hu Rate: 0.0150
 
 NON-DEALER ROUNDS:
   (All values are averages across all non-dealer rounds)
-  Mean Profit: 36.61 ± 293.51
-  Mean Utility: 5.33 ± 49.87
-  Win Rate: 0.0870
-  Deal-in Rate (as winner): 0.0267
-  Deal-in Loss Rate: 0.0303
-  Missed Hu Rate: 0.0160
+  Mean Profit: 44.96 ± 319.80
+  Win Rate: 0.0967
+  Deal-in Rate (as winner): 0.0287
+  Deal-in Loss Rate: 0.0313
+  Missed Hu Rate: 0.0190
 
 ======================================================================
 Composition θ=1: 1 DEF, 3 AGG
@@ -115,39 +95,35 @@ Composition θ=1: 1 DEF, 3 AGG
 
 DEFENSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 768.40 ± 1078.76
-  Mean Utility: 198.75 ± 190.24
-  Win Rate: 0.2460
-  Deal-in Rate (as winner): 0.1340
+  Mean Profit: 910.80 ± 1328.91
+  Win Rate: 0.2440
+  Deal-in Rate (as winner): 0.1250
   Missed Hu Rate: 0.0000
-  Mean Fan (when winning): 1.86
+  Mean Fan (when winning): 1.90
 
 AGGRESSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 729.47 ± 1535.57
-  Mean Utility: 140.35 ± 234.98
-  Win Rate: 0.0810
-  Deal-in Rate (as winner): 0.0280
-  Missed Hu Rate: 0.0180
-  Mean Fan (when winning): 3.33
+  Mean Profit: 786.80 ± 1120.80
+  Win Rate: 0.0863
+  Deal-in Rate (as winner): 0.0250
+  Missed Hu Rate: 0.0260
+  Mean Fan (when winning): 3.32
 
 DEALER ROUNDS:
   (All values are averages across all dealer rounds)
-  Mean Profit: 49.70 ± 267.25
-  Mean Utility: 9.04 ± 49.06
-  Win Rate: 0.1770
-  Deal-in Rate (as winner): 0.0850
-  Deal-in Loss Rate: 0.0510
-  Missed Hu Rate: 0.0150
+  Mean Profit: 39.94 ± 283.93
+  Win Rate: 0.1580
+  Deal-in Rate (as winner): 0.0730
+  Deal-in Loss Rate: 0.0430
+  Missed Hu Rate: 0.0220
 
 NON-DEALER ROUNDS:
   (All values are averages across all non-dealer rounds)
-  Mean Profit: 32.71 ± 324.35
-  Mean Utility: 3.98 ± 45.05
-  Win Rate: 0.1040
-  Deal-in Rate (as winner): 0.0443
-  Deal-in Loss Rate: 0.0557
-  Missed Hu Rate: 0.0130
+  Mean Profit: 41.21 ± 289.51
+  Win Rate: 0.1150
+  Deal-in Rate (as winner): 0.0423
+  Deal-in Loss Rate: 0.0523
+  Missed Hu Rate: 0.0187
 
 ======================================================================
 Composition θ=2: 2 DEF, 2 AGG
@@ -155,39 +131,35 @@ Composition θ=2: 2 DEF, 2 AGG
 
 DEFENSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 752.60 ± 1673.88
-  Mean Utility: 149.25 ± 199.35
-  Win Rate: 0.2155
-  Deal-in Rate (as winner): 0.1200
+  Mean Profit: 540.60 ± 917.45
+  Win Rate: 0.2075
+  Deal-in Rate (as winner): 0.1195
   Missed Hu Rate: 0.0000
-  Mean Fan (when winning): 1.91
+  Mean Fan (when winning): 1.78
 
 AGGRESSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 795.40 ± 1649.78
-  Mean Utility: 139.70 ± 229.22
-  Win Rate: 0.0780
-  Deal-in Rate (as winner): 0.0195
-  Missed Hu Rate: 0.0315
-  Mean Fan (when winning): 3.26
+  Mean Profit: 702.60 ± 1158.14
+  Win Rate: 0.0775
+  Deal-in Rate (as winner): 0.0255
+  Missed Hu Rate: 0.0195
+  Mean Fan (when winning): 3.28
 
 DEALER ROUNDS:
   (All values are averages across all dealer rounds)
-  Mean Profit: 53.28 ± 359.39
-  Mean Utility: 7.83 ± 49.32
-  Win Rate: 0.1910
-  Deal-in Rate (as winner): 0.0940
-  Deal-in Loss Rate: 0.0630
-  Missed Hu Rate: 0.0160
+  Mean Profit: 40.98 ± 251.76
+  Win Rate: 0.1650
+  Deal-in Rate (as winner): 0.0800
+  Deal-in Loss Rate: 0.0770
+  Missed Hu Rate: 0.0050
 
 NON-DEALER ROUNDS:
   (All values are averages across all non-dealer rounds)
-  Mean Profit: 33.84 ± 349.83
-  Mean Utility: 3.69 ± 44.72
-  Win Rate: 0.1320
-  Deal-in Rate (as winner): 0.0617
-  Deal-in Loss Rate: 0.0720
-  Missed Hu Rate: 0.0157
+  Mean Profit: 27.78 ± 230.18
+  Win Rate: 0.1350
+  Deal-in Rate (as winner): 0.0700
+  Deal-in Loss Rate: 0.0710
+  Missed Hu Rate: 0.0113
 
 ======================================================================
 Composition θ=3: 3 DEF, 1 AGG
@@ -195,39 +167,35 @@ Composition θ=3: 3 DEF, 1 AGG
 
 DEFENSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 653.73 ± 1019.73
-  Mean Utility: 132.33 ± 166.56
-  Win Rate: 0.1963
-  Deal-in Rate (as winner): 0.1070
+  Mean Profit: 561.20 ± 1039.06
+  Win Rate: 0.1907
+  Deal-in Rate (as winner): 0.1047
   Missed Hu Rate: 0.0000
-  Mean Fan (when winning): 1.83
+  Mean Fan (when winning): 1.81
 
 AGGRESSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 506.00 ± 991.13
-  Mean Utility: 87.30 ± 197.61
-  Win Rate: 0.0640
-  Deal-in Rate (as winner): 0.0170
-  Missed Hu Rate: 0.0300
-  Mean Fan (when winning): 3.22
+  Mean Profit: 1054.80 ± 1425.09
+  Win Rate: 0.0780
+  Deal-in Rate (as winner): 0.0190
+  Missed Hu Rate: 0.0270
+  Mean Fan (when winning): 3.45
 
 DEALER ROUNDS:
   (All values are averages across all dealer rounds)
-  Mean Profit: 38.92 ± 265.82
-  Mean Utility: 5.17 ± 41.96
-  Win Rate: 0.1880
-  Deal-in Rate (as winner): 0.1010
-  Deal-in Loss Rate: 0.0870
-  Missed Hu Rate: 0.0130
+  Mean Profit: 33.84 ± 208.20
+  Win Rate: 0.2040
+  Deal-in Rate (as winner): 0.1040
+  Deal-in Loss Rate: 0.0790
+  Missed Hu Rate: 0.0040
 
 NON-DEALER ROUNDS:
   (All values are averages across all non-dealer rounds)
-  Mean Profit: 28.15 ± 215.20
-  Mean Utility: 3.02 ± 38.89
-  Win Rate: 0.1550
-  Deal-in Rate (as winner): 0.0790
-  Deal-in Loss Rate: 0.0837
-  Missed Hu Rate: 0.0057
+  Mean Profit: 34.36 ± 286.49
+  Win Rate: 0.1487
+  Deal-in Rate (as winner): 0.0763
+  Deal-in Loss Rate: 0.0847
+  Missed Hu Rate: 0.0077
 
 ======================================================================
 Composition θ=4: 4 DEF, 0 AGG
@@ -235,29 +203,26 @@ Composition θ=4: 4 DEF, 0 AGG
 
 DEFENSIVE Players:
   (All values are averages across all trials)
-  Mean Profit: 559.20 ± 814.61
-  Mean Utility: 104.41 ± 147.15
-  Win Rate: 0.1808
-  Deal-in Rate (as winner): 0.0953
+  Mean Profit: 591.00 ± 1031.85
+  Win Rate: 0.1743
+  Deal-in Rate (as winner): 0.0923
   Missed Hu Rate: 0.0000
-  Mean Fan (when winning): 1.79
+  Mean Fan (when winning): 1.84
 
 DEALER ROUNDS:
   (All values are averages across all dealer rounds)
-  Mean Profit: 35.06 ± 214.27
-  Mean Utility: 4.27 ± 37.85
-  Win Rate: 0.2090
-  Deal-in Rate (as winner): 0.1130
-  Deal-in Loss Rate: 0.0950
+  Mean Profit: 47.74 ± 273.47
+  Win Rate: 0.2150
+  Deal-in Rate (as winner): 0.1090
+  Deal-in Loss Rate: 0.0840
   Missed Hu Rate: 0.0000
 
 NON-DEALER ROUNDS:
   (All values are averages across all non-dealer rounds)
-  Mean Profit: 25.59 ± 193.41
-  Mean Utility: 2.20 ± 35.27
-  Win Rate: 0.1713
-  Deal-in Rate (as winner): 0.0893
-  Deal-in Loss Rate: 0.0953
+  Mean Profit: 23.49 ± 216.70
+  Win Rate: 0.1607
+  Deal-in Rate (as winner): 0.0867
+  Deal-in Loss Rate: 0.0950
   Missed Hu Rate: 0.0000
 
 ======================================================================
@@ -265,14 +230,14 @@ REGRESSION ANALYSIS
 ======================================================================
 
 Defensive Strategy:
-  Slope: -131.12
-  R-squared: 0.6801
-  p-value: 0.175331
+  Slope: -127.94
+  R-squared: 0.9727
+  p-value: 0.013743
 
 Aggressive Strategy:
-  Slope: -80.46
-  R-squared: 0.2885
-  p-value: 0.462881
+  Slope: 78.43
+  R-squared: 0.1588
+  p-value: 0.601478
 
 ======================================================================
 SUMMARY TABLE
@@ -280,104 +245,19 @@ SUMMARY TABLE
 
 θ     DEF Profit      AGG Profit      Dealer Profit   NonDealer Profit 
 ----------------------------------------------------------------------
-0     0.00            912.00          72.56           36.61            
-1     768.40          729.47          49.70           32.71            
-2     752.60          795.40          53.28           33.84            
-3     653.73          506.00          38.92           28.15            
-4     559.20          0.00            35.06           25.59            
+0     0.00            936.00          52.32           44.96            
+1     910.80          786.80          39.94           41.21            
+2     540.60          702.60          40.98           27.78            
+3     561.20          1054.80         33.84           34.36            
+4     591.00          0.00            47.74           23.49            
 
 ======================================================================
 INTERPRETATION
 ======================================================================
 
-❌ H3 Not Supported: Aggressive strategy profit DECREASES as θ increases
-   (More defensive opponents → Worse aggressive performance)
+✅ H2 Supported: Aggressive strategy profit INCREASES as θ increases
+   (More defensive opponents → Better aggressive performance)
 
 ======================================================================
 
-Plots saved to: /Users/xuchen/597PRFINAL/plots/experiment_3B
-
-
-
-============================================================
-Experiment 4: Sensitivity Analysis
-Varying key parameters: P (penalty), alpha, and fan threshold
-============================================================
-
-------------------------------------------------------------
-SENSITIVITY TO DEAL-IN PENALTY (P):
-------------------------------------------------------------
-
-Penalty = 1:
-  Defensive mean profit: 374.80
-  Aggressive mean profit: 760.80
-  Difference (Def - Agg): -386.00
-
-Penalty = 3:
-  Defensive mean profit: 432.80
-  Aggressive mean profit: 572.00
-  Difference (Def - Agg): -139.20
-
-Penalty = 5:
-  Defensive mean profit: 46.00
-  Aggressive mean profit: 478.00
-  Difference (Def - Agg): -432.00
-
-------------------------------------------------------------
-SENSITIVITY TO ALPHA (utility weight):
-------------------------------------------------------------
-
-Alpha = 0.1:
-  Defensive mean utility: 127.29
-  Aggressive mean utility: 53.63
-  Difference (Agg - Def): -73.66
-
-Alpha = 0.5:
-  Defensive mean utility: 103.02
-  Aggressive mean utility: 63.71
-  Difference (Agg - Def): -39.31
-
-Alpha = 0.9:
-  Defensive mean utility: 105.51
-  Aggressive mean utility: 97.23
-  Difference (Agg - Def): -8.27
-
-------------------------------------------------------------
-SENSITIVITY TO FAN THRESHOLD (t_fan_threshold):
-------------------------------------------------------------
-
-Threshold = 1:
-  Aggressive mean profit: 703.60
-  Win rate: 0.1880
-  Mean fan: 1.92
-
-Threshold = 3:
-  Aggressive mean profit: 612.40
-  Win rate: 0.0750
-  Mean fan: 2.42
-
-Threshold = 5:
-  Aggressive mean profit: -214.40
-  Win rate: 0.0050
-  Mean fan: 0.50
-
-------------------------------------------------------------
-SENSITIVITY TO BASE POINTS:
-------------------------------------------------------------
-
-Base points = 1:
-  Defensive mean profit: 62.16
-  Aggressive mean profit: 96.72
-
-Base points = 2:
-  Defensive mean profit: 113.28
-  Aggressive mean profit: 93.92
-
-Base points = 4:
-  Defensive mean profit: 191.68
-  Aggressive mean profit: 243.68
-
-============================================================
-Sensitivity analysis complete!
-
-Plots saved to: /Users/xuchen/597PRFINAL/plots/experiment_4
+Plots saved to: /Users/BohanShan/Desktop/2025Fall_projects/plots/experiment

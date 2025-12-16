@@ -1,4 +1,10 @@
 from typing import Union
+from dataclasses import dataclass
+from collections import Counter
+
+# -----------------------------------------------------------------------------
+# Legacy threshold-based strategies (kept for compatibility with existing tests)
+# -----------------------------------------------------------------------------
 
 
 def defensive_strategy(fan: Union[int, float], fan_min: int = 1) -> bool:
@@ -8,7 +14,7 @@ def defensive_strategy(fan: Union[int, float], fan_min: int = 1) -> bool:
     Note: fan_min should be >= 1 because Pi Hu (0 fan) is not a legal winning hand.
     
     Args:
-        fan: Total fan count (including Kong bonuses)
+        fan: Total fan count (including Gong bonuses)
         fan_min: Minimum fan threshold (default: 1)
     
     Returns:
@@ -24,10 +30,175 @@ def aggressive_strategy(fan: Union[int, float], threshold: int = 3) -> bool:
     Rejects low-fan hands to pursue higher-value combinations.
     
     Args:
-        fan: Total fan count (including Kong bonuses)
+        fan: Total fan count (including Gong bonuses)
         threshold: Minimum fan threshold (default: 3)
     
     Returns:
         Boolean: True if strategy accepts this fan level
     """
     return fan >= threshold
+
+
+# -----------------------------------------------------------------------------
+# Strategy interface and richer strategy implementations
+# -----------------------------------------------------------------------------
+
+@dataclass
+class TableState:
+    discard_pile: list
+    wall_remaining: int
+    turn: int
+    risk: float
+
+
+class BaseStrategy:
+    """Interface for Mahjong decision policies."""
+
+    name: str = "BASE"
+
+    def should_hu(self, fan: int, risk: float, hand, fan_min: int, fan_threshold: int) -> bool:
+        raise NotImplementedError
+
+    def decide_claim(self, action: str, context: dict) -> bool:
+        """
+        Decide whether to claim a discard for a given action.
+        action: 'hu' | 'gong' | 'pong' | 'chi'
+        context includes fan, risk, table_state, hand, meld_options (for chi)
+        """
+        raise NotImplementedError
+
+    def choose_discard(self, hand, table_state: TableState):
+        """Return a Tile to discard."""
+        raise NotImplementedError
+
+
+def _tile_key(tile):
+    return (tile.tile_type.value, tile.value)
+
+
+def _suit_majority(hand_tiles):
+    counts = Counter(t.tile_type for t in hand_tiles)
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def _meld_potential_score(tile, hand_tiles):
+    """
+    Minimal heuristic: pairs > near-sequences > honors.
+    Lower score => worse tile to keep.
+    """
+    same = sum(1 for t in hand_tiles if t == tile)
+    score = 0
+    if same >= 2:
+        score += 3  # pair/pong potential
+    # two-sided wait potential
+    for delta in (-2, -1, 1, 2):
+        for t in hand_tiles:
+            if t.tile_type == tile.tile_type and t.value == tile.value + delta:
+                score += 0.5
+    if tile.tile_type.name in ["FENG", "JIAN"]:
+        score += 0.8  # small value for honors
+    return score
+
+
+def _safety_score(tile, discard_pile):
+    """Safer if already visible in discards (fewer remaining copies)."""
+    seen = sum(1 for t in discard_pile if t == tile)
+    return seen  # higher is safer
+
+
+class TempoDefender(BaseStrategy):
+    """
+    Fast and conservative strategy:
+    - Wins when fan >= fan_min; tends to accept wins even at high risk.
+    - Rarely claims chi/pong/gong.
+    - Discards the safest tiles with lowest meld potential.
+    """
+
+    name = "DEF_TEMPO"
+
+    def should_hu(self, fan: int, risk: float, hand, fan_min: int, fan_threshold: int) -> bool:
+        if fan >= fan_min:
+            return True
+        # High table risk -> take the win if available
+        return risk >= 0.5 and fan >= fan_min - 0.5
+
+    def decide_claim(self, action: str, context: dict) -> bool:
+        risk = context.get("risk", 0.0)
+        fan = context.get("fan", 0)
+        if action == "hu":
+            return True
+        if action == "gong":
+            return risk < 0.35
+        if action == "pong":
+            return risk < 0.5
+        if action == "chi":
+            return risk < 0.35
+        return False
+
+    def choose_discard(self, hand, table_state: TableState):
+        tiles = hand.tiles
+        discard_pile = table_state.discard_pile
+        # Score tiles: lower meld potential and higher safety -> discard first
+        scored = []
+        for t in tiles:
+            potential = _meld_potential_score(t, tiles)
+            safety = _safety_score(t, discard_pile)
+            scored.append((potential, safety, t))
+        scored.sort(key=lambda x: (x[0], -x[1]))  # lowest potential, highest safety
+        return scored[0][2] if scored else None
+
+
+class ValueChaser(BaseStrategy):
+    """
+    Pursues high fan strategy:
+    - Only wins when fan reaches threshold; falls back to minimum when risk is too high.
+    - Willing to claim pong/gong for fan; can claim chi early.
+    - Discards tiles that don't match dominant suit or have low potential first.
+    """
+
+    name = "VAL_CHASER"
+
+    def __init__(self, target_threshold: int = 3):
+        self.target_threshold = target_threshold
+
+    def should_hu(self, fan: int, risk: float, hand, fan_min: int, fan_threshold: int) -> bool:
+        threshold = max(self.target_threshold, fan_threshold)
+        if risk > 0.65:
+            # bail out if table is dangerous
+            return fan >= fan_min
+        return fan >= threshold
+
+    def decide_claim(self, action: str, context: dict) -> bool:
+        risk = context.get("risk", 0.0)
+        fan = context.get("fan", 0)
+        table_state: TableState = context.get("table_state")
+        wall_remaining = table_state.wall_remaining if table_state else 50
+
+        if action == "hu":
+            return self.should_hu(fan, risk, None, 1, self.target_threshold)
+        if action == "gong":
+            return True  # extra fan
+        if action == "pong":
+            return True  # build pongs / all-pongs value
+        if action == "chi":
+            return wall_remaining > 25 and risk < 0.7
+        return False
+
+    def choose_discard(self, hand, table_state: TableState):
+        tiles = hand.tiles
+        discard_pile = table_state.discard_pile
+        dominant_suit = _suit_majority(tiles)
+
+        scored = []
+        for t in tiles:
+            suit_penalty = 0
+            if dominant_suit and t.tile_type != dominant_suit and t.tile_type.name not in ["FENG", "JIAN"]:
+                suit_penalty = 2  # Discard tiles that don't match dominant suit first
+            potential = _meld_potential_score(t, tiles)
+            safety = _safety_score(t, discard_pile)
+            keep_score = potential - suit_penalty + safety * 0.3
+            scored.append((keep_score, t))
+        scored.sort(key=lambda x: x[0])  # Discard the lowest scored
+        return scored[0][1] if scored else None

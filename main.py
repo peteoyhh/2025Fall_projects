@@ -14,16 +14,10 @@ def run_experiment_1(cfg):
     exp1.main()
 
 
-def run_experiment_3(cfg):
-    """Run Experiment 3: Table Composition Analysis (4-player table)"""
-    import experiments.run_experiment_3_table as exp3t
-    exp3t.main()
-
-
-def run_experiment_4(cfg):
-    """Run Experiment 4: Sensitivity Analysis"""
-    import experiments.run_sensitivity as exp4
-    exp4.main()
+def run_experiment_2(cfg):
+    """Run Experiment 2: Table Composition Analysis (4-player table)"""
+    import experiments.run_experiment_2_table as exp2t
+    exp2t.main()
 
 
 def run_quick_demo(cfg):
@@ -46,13 +40,11 @@ def run_quick_demo(cfg):
     
     print("\nDefensive Strategy Results:")
     print(f"  Profit: {results_def['profits'][0]:.2f}")
-    print(f"  Utility: {results_def['utilities'][0]:.2f}")
     print(f"  Mean Fan: {results_def['mean_fans'][0]:.2f}")
     print(f"  Win Rate: {results_def['win_rates'][0]:.4f}")
     
     print("\nAggressive Strategy Results:")
     print(f"  Profit: {results_agg['profits'][0]:.2f}")
-    print(f"  Utility: {results_agg['utilities'][0]:.2f}")
     print(f"  Mean Fan: {results_agg['mean_fans'][0]:.2f}")
     print(f"  Win Rate: {results_agg['win_rates'][0]:.4f}")
 
@@ -91,8 +83,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--experiment",
         type=int,
-        choices=[1, 3, 4],
-        help="Run specific experiment (1, 3, or 4)"
+        choices=[1, 2],
+        help="Run specific experiment (1 or 2)"
     )
     parser.add_argument(
         "--all",
@@ -115,8 +107,7 @@ if __name__ == "__main__":
     elif args.experiment:
         experiment_map = {
             1: ("experiment1_output.txt", run_experiment_1),
-            3: ("experiment3_output.txt", run_experiment_3),
-            4: ("experiment4_output.txt", run_experiment_4),
+            2: ("experiment2_output.txt", run_experiment_2),
         }
         filename, func = experiment_map[args.experiment]
         run_with_logging(filename, func, cfg)
@@ -133,8 +124,8 @@ if __name__ == "__main__":
                 print("Running all experiments...\n")
                 run_experiment_1(cfg)
                 print("\n\n")
-                print("Running Experiment 3: 4-player table composition analysis...\n")
-                run_experiment_3(cfg)
+                print("Running Experiment 2: 4-player table composition analysis...\n")
+                run_experiment_2(cfg)
         print(f"\nCompleted all experiments. Output saved to {output_path}")
     else:
         # Default: run quick demo

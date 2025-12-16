@@ -1,8 +1,6 @@
 base_points: 10
 fan_min: 1
 t_fan_threshold: 3
-alpha: 0.5
 penalty_deal_in: 1
 rounds_per_trial: 20
 trials: 50
-baseline_utility: 50

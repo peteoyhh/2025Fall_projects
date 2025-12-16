@@ -10,7 +10,7 @@ def compute_score(fan: int, base_points: int = 1) -> int:
     where B is base_points and fan is the total fan count.
     
     Args:
-        fan: Total fan count (including Kong bonuses)
+        fan: Total fan count (including Gong bonuses)
         base_points: Base point value (default: 1)
     
     Returns:

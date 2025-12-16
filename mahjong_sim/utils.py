@@ -37,11 +37,6 @@ def compare_strategies(results_def: Dict[str, np.ndarray], results_agg: Dict[str
     profit_def_stats = compute_statistics(results_def["profits"])
     profit_agg_stats = compute_statistics(results_agg["profits"])
     
-    # Utility comparison
-    utility_stat = stats.ttest_ind(results_def["utilities"], results_agg["utilities"])
-    utility_def_stats = compute_statistics(results_def["utilities"])
-    utility_agg_stats = compute_statistics(results_agg["utilities"])
-    
     return {
         "profit": {
             "t_statistic": profit_stat.statistic,
@@ -49,13 +44,6 @@ def compare_strategies(results_def: Dict[str, np.ndarray], results_agg: Dict[str
             "defensive": profit_def_stats,
             "aggressive": profit_agg_stats,
             "difference": profit_def_stats["mean"] - profit_agg_stats["mean"]
-        },
-        "utility": {
-            "t_statistic": utility_stat.statistic,
-            "p_value": utility_stat.pvalue,
-            "defensive": utility_def_stats,
-            "aggressive": utility_agg_stats,
-            "difference": utility_agg_stats["mean"] - utility_def_stats["mean"]
         }
     }
 

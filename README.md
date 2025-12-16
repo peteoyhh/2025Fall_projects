@@ -57,16 +57,13 @@ baseline_utility: 50        # Starting utility value (added to cumulative utilit
 **Run a specific experiment:**
 ```bash
 python main.py --experiment 1    # Strategy comparison
-python main.py --experiment 3    # Table composition analysis
-python main.py --experiment 4    # Sensitivity analysis
+python main.py --experiment 2    # Table composition analysis
 ```
 
-**Run all experiments (runs experiments 1 and 3):**
+**Run all experiments (runs experiments 1 and 2):**
 ```bash
 python main.py --all
 ```
-
-Note: Experiment 4 (sensitivity analysis) is not included in `--all` and because it takes longer time
 
 ### Running Tests
 
@@ -96,8 +93,7 @@ open htmlcov/index.html
 │   └── base.yaml              # Configuration file for all experiments
 ├── experiments/
 │   ├── run_experiment_1.py   # Strategy comparison experiment
-│   ├── run_experiment_3_table.py  # Table composition analysis
-│   └── run_sensitivity.py    # Sensitivity analysis
+│   └── run_experiment_2_table.py  # Table composition analysis
 ├── mahjong_sim/
 │   ├── __init__.py
 │   ├── real_mc.py            # Core Monte Carlo simulation engine
@@ -239,42 +235,8 @@ Each simulation trial consists of **20 rounds per player** (configurable via `ro
 
 | **Experiment** | **Variable Manipulated** | **Purpose** |
 |-----------------|--------------------------|-------------|
-| 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) and H2 (utility difference with CRRA utility) |
-| 3. Table composition sweep | Vary proportion of DEF players, theta = 0, 0.33, 0.67, 1 | Test H3 (composition threshold) |
-| 4. Sensitivity analysis | Vary P (deal-in penalty: [1, 3, 5]), alpha ([0.1, 0.5, 0.9]), fan threshold ([1, 3, 5]), and base points ([1, 2, 4]) | Examine robustness of conclusions across parameter ranges |
-
-**Utility function:**
-
-The utility function uses a concave reward function with penalties. For each round, the utility change is computed as:
-
-```
-U_round(profit, fan, missed_hu, deal_in) = {
-    sqrt(profit) * 3                    if profit > 0 and fan < 3
-    sqrt(profit) * 3 * 2                if profit > 0 and fan >= 3
-    -sqrt(|profit|) * 3                 if profit < 0
-    0                                    if profit == 0
-} - missed_penalty - deal_in_penalty
-```
-
-Where:
-- `missed_penalty = 0.2` (penalty for missing a possible Hu)
-- `deal_in_penalty = 0.5` (penalty for dealing in as loser)
-- `fan`: Fan count of the winning hand (used for bonus multiplier when fan >= 3)
-
-**Total utility per trial** is calculated as:
-```
-U_total = baseline_utility + Σ(U_round for all rounds)
-```
-
-Where:
-- `baseline_utility = 50` (configurable in `base.yaml`) - starting utility value added to cumulative utility
-- Each round's utility change (`U_round`) is computed based on that round's profit and added to the cumulative total
-
-**Key design principles:**
-- The square root function (`sqrt`) creates diminishing returns, reflecting that additional profit provides less utility gain
-- The base multiplier `* 3` scales the utility to a more representative scale
-- High-fan wins (fan >= 3) receive a 2x bonus multiplier, making aggressive strategies potentially more rewarding despite lower win rates
-- Penalties are minimal and do not overpower the concave rewards
+| 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) |
+| 2. Table composition sweep | Vary proportion of DEF players, theta = 0, 1, 2, 3, 4 | Test H2 (composition threshold) |
 
 ---
 
@@ -283,14 +245,13 @@ Where:
 Simulation outputs are aggregated across all trials to estimate:
 
 - Expected profit per trial: E(Score)  
-- Expected utility: E(U)  
-- Variance and confidence intervals for both measures  
+- Variance and confidence intervals  
 - Win rate, self-draw rate, and deal-in rate  
 - Fan distribution (frequency of 1–16 fan outcomes)  
 - Risk metrics such as maximum drawdown and ruin probability under a finite bankroll  
 
 Statistical comparisons between strategy types use **two-sample t-tests** and **confidence intervals**.  
-For composition analysis (H3), we run a **regression of profit against theta** (the proportion of defensive opponents) to detect sign changes that indicate the critical threshold of player compositions.  
+For composition analysis (H2), we run a **regression of profit against theta** (the proportion of defensive opponents) to detect sign changes that indicate the critical threshold of player compositions.  
 
 All experiments use **modular Python code** and configuration-driven runs via YAML inputs.
 
@@ -309,14 +270,6 @@ Defensive players, who prioritize winning whenever possible, will achieve higher
    ![fan distribution](plots/experiment_1/fan_distribution.png)
    
 **H2:**  
-Despite potentially earning less monetary profit, aggressive players will achieve higher average utility than defensive players when utility accounts for both emotional rewards of large-hand wins and penalties for missed opportunities or deal-ins.
-
-1. Unfortunately, our findings do not support the hypothesis. The Defensive strategy achieved a significantly higher average utility (115.32) than the Aggressive strategy (89.80). This suggests that, even when factoring in the emotional rewards and penalties as described, the defensive approach was more effective at maximizing utility on average.
-   ![utility comparison](plots/experiment_1/utility_comparison.png)
-2. From the utility distribution plot, we found that the lines are very random. The Defensive strategy is heavily skewed toward positive utility outcomes, explaining its higher average. The Aggressive strategy, while having the potential for the highest utility win (the orange tail extends slightly further than the blue tail, near 1000), also has a much greater risk, evidenced by the large portion of its distribution that results in negative utility (losses or high penalties).
-   ![utility distribution](plots/experiment_1/utility_distribution.png)
-
-**H3:**  
 The relative performance of aggressive and defensive strategies depends on the **composition of opponents** at the table.  
 As the proportion of defensive players increases, the expected profit of aggressive players rises, while that of defensive players declines.
 
@@ -331,21 +284,17 @@ Interpretation: This even distribution of strategies aligns with the core predic
 3. Scenario: One Aggressive, Three Defensive (1 AGG, 3 DEF)
 Result: The Defensive players earned a significantly higher average profit than the single Aggressive player.
 Possible Reason: This scenario often resulted in a very short game. While the lone aggressive player was focused on collecting specific melds for a high-scoring hand, the three defensive players rapidly completed the basic melds necessary to end the round. The speed of the defensive group minimized the aggressive player's opportunity to execute their high-profit strategy.
-    ![profitvstheta](plots/experiment_3B/profit_vs_theta_combined.png)
+    ![profitvstheta](plots/experiment/profit_vs_theta_combined.png)
 
-4. When comparing the utility and the composition, we found that across all tested player compositions, the average utility earned by the Defensive players was invariably higher than the average utility earned by the Aggressive players. This suggests that, regardless of the relative frequency of aggressive or defensive strategies at the table, the Defensive strategy proved to be the more robust approach for maximizing utility under the current game parameters.
-  ![utilityvstheta](plots/experiment_3B/utility_vs_theta_combined.png)
-
-5. When comparing the win-rate and the composition, the Defensive players maintained a higher win-rate than the Aggressive players, irrespective of the proportion of Aggressive players at the table.
-   ![winratevstheta](plots/experiment_3B/win_rate_vs_theta_combined.png)
+4. When comparing the win-rate and the composition, the Defensive players maintained a higher win-rate than the Aggressive players, irrespective of the proportion of Aggressive players at the table.
+   ![winratevstheta](plots/experiment/win_rate_vs_theta_combined.png)
 
 ---
 
 ## 🀄️ Conclusion
 
-1. Defensive players have a higher win rate and  earn more - Even though aggressive players achieve higher fan values, their much lower win frequency prevents those large hands from earning.
-2. Utility also favors defensive play - aggressive strategies only make sense for players who value the emotional satisfaction of large hands more than financial outcomes. Otherwise, defensive play is superior on both expected value and risk-adjusted terms.
-3. Aggressive players do not gain an advantage even when surrounded by other aggressive players - The aggressive strategy’s structural weaknesses—low win rate, high missed-Hu rate, and dependency on large hands—outweigh any potential synergy or table-composition advantage.
+1. Defensive players have a higher win rate and earn more - Even though aggressive players achieve higher fan values, their much lower win frequency prevents those large hands from earning.
+2. Aggressive players do not gain an advantage even when surrounded by other aggressive players - The aggressive strategy's structural weaknesses—low win rate, high missed-Hu rate, and dependency on large hands—outweigh any potential synergy or table-composition advantage.
 
 ---
 

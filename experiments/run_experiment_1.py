@@ -30,7 +30,6 @@ def build_players(test_strategy, test_label, cfg):
 
 def summarize_trials(players_builder, cfg):
     profits = []
-    utilities = []
     win_rates = []
     deal_in_rates = []
     mean_fans = []
@@ -41,7 +40,6 @@ def summarize_trials(players_builder, cfg):
         table_result = simulate_custom_table(players, cfg)
         tested_stats = table_result["per_player"][0]
         profits.append(tested_stats["profit"])
-        utilities.append(tested_stats["utility"])
         win_rates.append(tested_stats["win_rate"])
         deal_in_rates.append(tested_stats["deal_in_rate"])
         mean_fans.append(tested_stats["mean_fan"])
@@ -51,14 +49,12 @@ def summarize_trials(players_builder, cfg):
 
     return {
         "profits": np.array(profits),
-        "utilities": np.array(utilities),
         "win_rates": np.array(win_rates),
         "deal_in_rates": np.array(deal_in_rates),
         "mean_fans": np.array(mean_fans),
         "fan_distribution": np.array(fan_distributions) if fan_distributions else np.array([]),
         # Also return means for backward compatibility
         "profit": np.mean(profits),
-        "utility": np.mean(utilities),
         "win_rate": np.mean(win_rates),
         "deal_in_rate": np.mean(deal_in_rates),
         "mean_fan": np.mean(mean_fans)
@@ -102,7 +98,6 @@ def main():
     print("\nDefensive Strategy Results:")
     print("  (All values are averages across all trials)")
     print(f"  Profit: {def_results['profit']:.2f}")
-    print(f"  Utility: {def_results['utility']:.2f}")
     print(f"  Win Rate: {def_results['win_rate']:.4f}")
     print(f"  Deal-in Rate: {def_results['deal_in_rate']:.4f}")
     print(f"  Mean Fan: {def_results['mean_fan']:.2f}")
@@ -110,39 +105,23 @@ def main():
     print("\nAggressive Strategy Results:")
     print("  (All values are averages across all trials)")
     print(f"  Profit: {agg_results['profit']:.2f}")
-    print(f"  Utility: {agg_results['utility']:.2f}")
     print(f"  Win Rate: {agg_results['win_rate']:.4f}")
     print(f"  Deal-in Rate: {agg_results['deal_in_rate']:.4f}")
     print(f"  Mean Fan: {agg_results['mean_fan']:.2f}")
 
-    # Statistical comparison using utility
+    # Statistical comparison
     results_def_for_comparison = {
         "profits": def_results["profits"],
-        "utilities": def_results["utilities"],
         "win_rates": def_results["win_rates"],
         "mean_fans": def_results["mean_fans"]
     }
     results_agg_for_comparison = {
         "profits": agg_results["profits"],
-        "utilities": agg_results["utilities"],
         "win_rates": agg_results["win_rates"],
         "mean_fans": agg_results["mean_fans"]
     }
     
     comparison = compare_strategies(results_def_for_comparison, results_agg_for_comparison)
-    
-    print("\n" + "-" * 60)
-    print("STATISTICAL COMPARISON:")
-    print("-" * 60)
-    print(f"Defensive Strategy:")
-    print(f"  Mean Utility: {comparison['utility']['defensive']['mean']:.2f}")
-    print(f"  95% CI: [{comparison['utility']['defensive']['ci_95_lower']:.2f}, {comparison['utility']['defensive']['ci_95_upper']:.2f}]")
-    print(f"\nAggressive Strategy:")
-    print(f"  Mean Utility: {comparison['utility']['aggressive']['mean']:.2f}")
-    print(f"  95% CI: [{comparison['utility']['aggressive']['ci_95_lower']:.2f}, {comparison['utility']['aggressive']['ci_95_upper']:.2f}]")
-    print(f"\nDifference (Agg - Def): {comparison['utility']['difference']:.2f}")
-    print(f"t-statistic: {comparison['utility']['t_statistic']:.4f}")
-    print(f"p-value: {comparison['utility']['p_value']:.6f}")
     
     print("\n" + "-" * 60)
     print("PROFIT COMPARISON:")
@@ -168,15 +147,6 @@ def main():
         ylabel="Profit"
     )
     
-    # Bar chart: Utility (DEF vs AGG)
-    save_bar_plot(
-        ["DEF", "AGG"],
-        [def_results['utility'], agg_results['utility']],
-        "Utility Comparison: Defensive vs Aggressive Strategy",
-        os.path.join(plot_dir, "utility_comparison.png"),
-        ylabel="Utility"
-    )
-    
     # Bar chart: Win rate (DEF vs AGG)
     save_bar_plot(
         ["DEF", "AGG"],
@@ -184,35 +154,6 @@ def main():
         "Win Rate Comparison: Defensive vs Aggressive Strategy",
         os.path.join(plot_dir, "win_rate_comparison.png"),
         ylabel="Win Rate"
-    )
-    
-    # KDE plot: Utility distribution (separated by strategy)
-    # Better for large number of trials (e.g., 1000+)
-    save_kde_plot(
-        data_dict={
-            "Defensive": def_results['utilities'],
-            "Aggressive": agg_results['utilities']
-        },
-        title="Utility Distribution by Strategy",
-        outfile=os.path.join(plot_dir, "utility_distribution.png"),
-        xlabel="Utility",
-        ylabel="Density"
-    )
-    
-    # Scatter plot: Profit vs Utility (with fit lines, separated by strategy)
-    save_scatter_plot(
-        def_results['profits'],
-        def_results['utilities'],
-        "Profit vs Utility",
-        "Profit",
-        "Utility",
-        os.path.join(plot_dir, "profit_vs_utility.png"),
-        alpha=0.5,
-        fit_line=True,
-        x2=agg_results['profits'],
-        y2=agg_results['utilities'],
-        label1="Defensive",
-        label2="Aggressive"
     )
     
     # Stacked bar chart: Fan distribution separated by strategy

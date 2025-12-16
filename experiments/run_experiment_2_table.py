@@ -1,7 +1,7 @@
 """
-Experiment 3: 4-Player Table Composition Analysis
+Experiment 2: 4-Player Table Composition Analysis
 
-Tests Hypothesis H3: "Aggressive strategy performance depends on the proportion
+Tests Hypothesis H2: "Aggressive strategy performance depends on the proportion
 of defensive players at the table."
 
 Simulates 5 different table compositions:
@@ -33,8 +33,8 @@ def main():
         cfg = yaml.safe_load(f)
     
     print("=" * 70)
-    print("Experiment 3: 4-Player Table Composition Analysis")
-    print("Testing H3: Strategy performance depends on opponent composition (θ)")
+    print("Experiment 2: 4-Player Table Composition Analysis")
+    print("Testing H2: Strategy performance depends on opponent composition (θ)")
     print("=" * 70)
     
     num_trials = cfg.get("trials")
@@ -70,7 +70,6 @@ def main():
                     print(f"\nDEFENSIVE Players:")
                     print("  (All values are averages across all trials)")
                     print(f"  Mean Profit: {def_stats['mean_profit']:.2f} ± {def_stats['std_profit']:.2f}")
-                    print(f"  Mean Utility: {def_stats['mean_utility']:.2f} ± {def_stats['std_utility']:.2f}")
                     print(f"  Win Rate: {def_stats['win_rate']:.4f}")
                     print(f"  Deal-in Rate (as winner): {def_stats['deal_in_rate']:.4f}")
                     print(f"  Missed Hu Rate: {def_stats['missed_hu_rate']:.4f}")
@@ -81,7 +80,6 @@ def main():
                     print(f"\nAGGRESSIVE Players:")
                     print("  (All values are averages across all trials)")
                     print(f"  Mean Profit: {agg_stats['mean_profit']:.2f} ± {agg_stats['std_profit']:.2f}")
-                    print(f"  Mean Utility: {agg_stats['mean_utility']:.2f} ± {agg_stats['std_utility']:.2f}")
                     print(f"  Win Rate: {agg_stats['win_rate']:.4f}")
                     print(f"  Deal-in Rate (as winner): {agg_stats['deal_in_rate']:.4f}")
                     print(f"  Missed Hu Rate: {agg_stats['missed_hu_rate']:.4f}")
@@ -93,7 +91,6 @@ def main():
                 print(f"\nDEALER ROUNDS:")
                 print("  (All values are averages across all dealer rounds)")
                 print(f"  Mean Profit: {dealer_stats['mean_profit']:.2f} ± {dealer_stats['std_profit']:.2f}")
-                print(f"  Mean Utility: {dealer_stats['mean_utility']:.2f} ± {dealer_stats['std_utility']:.2f}")
                 print(f"  Win Rate: {dealer_stats['win_rate']:.4f}")
                 print(f"  Deal-in Rate (as winner): {dealer_stats['deal_in_rate']:.4f}")
                 print(f"  Deal-in Loss Rate: {dealer_stats['deal_in_loss_rate']:.4f}")
@@ -102,7 +99,6 @@ def main():
                 print(f"\nNON-DEALER ROUNDS:")
                 print("  (All values are averages across all non-dealer rounds)")
                 print(f"  Mean Profit: {non_dealer_stats['mean_profit']:.2f} ± {non_dealer_stats['std_profit']:.2f}")
-                print(f"  Mean Utility: {non_dealer_stats['mean_utility']:.2f} ± {non_dealer_stats['std_utility']:.2f}")
                 print(f"  Win Rate: {non_dealer_stats['win_rate']:.4f}")
                 print(f"  Deal-in Rate (as winner): {non_dealer_stats['deal_in_rate']:.4f}")
                 print(f"  Deal-in Loss Rate: {non_dealer_stats['deal_in_loss_rate']:.4f}")
@@ -170,23 +166,21 @@ def main():
     
     if len(agg_profits_for_regression) > 1:
         if agg_regression['slope'] > 0:
-            print("\n✅ H3 Supported: Aggressive strategy profit INCREASES as θ increases")
+            print("\n✅ H2 Supported: Aggressive strategy profit INCREASES as θ increases")
             print("   (More defensive opponents → Better aggressive performance)")
         else:
-            print("\n❌ H3 Not Supported: Aggressive strategy profit DECREASES as θ increases")
+            print("\n❌ H2 Not Supported: Aggressive strategy profit DECREASES as θ increases")
             print("   (More defensive opponents → Worse aggressive performance)")
     
     print("\n" + "=" * 70)
     
     # Generate plots
-    plot_dir = os.path.join(project_root, "plots", "experiment_3B")
+    plot_dir = os.path.join(project_root, "plots", "experiment")
     ensure_dir(plot_dir)
-    
+
     # Extract data for plotting
     def_profits = []
     agg_profits = []
-    def_utilities = []
-    agg_utilities = []
     def_win_rates = []
     agg_win_rates = []
     dealer_profits = []
@@ -198,20 +192,16 @@ def main():
         comp_results = results[theta]
         if len(comp_results["defensive"]["fan_distribution"]) > 0:
             def_profits.append(comp_results["defensive"]["mean_profit"])
-            def_utilities.append(comp_results["defensive"]["mean_utility"])
             def_win_rates.append(comp_results["defensive"]["win_rate"])
         else:
             def_profits.append(0.0)
-            def_utilities.append(0.0)
             def_win_rates.append(0.0)
         
         if len(comp_results["aggressive"]["fan_distribution"]) > 0:
             agg_profits.append(comp_results["aggressive"]["mean_profit"])
-            agg_utilities.append(comp_results["aggressive"]["mean_utility"])
             agg_win_rates.append(comp_results["aggressive"]["win_rate"])
         else:
             agg_profits.append(0.0)
-            agg_utilities.append(0.0)
             agg_win_rates.append(0.0)
         
         dealer_profits.append(comp_results["dealer"]["mean_profit"])
@@ -230,19 +220,6 @@ def main():
         "Mean Profit",
         os.path.join(plot_dir, "profit_vs_theta_combined.png"),
         y2=agg_profits,
-        label1="Defensive",
-        label2="Aggressive"
-    )
-    
-    # θ vs Utility (DEF vs AGG)
-    save_line_plot(
-        theta_values,
-        def_utilities,
-        "Utility vs Composition (θ): Both Strategies",
-        "θ (Number of DEF Players)",
-        "Mean Utility",
-        os.path.join(plot_dir, "utility_vs_theta_combined.png"),
-        y2=agg_utilities,
         label1="Defensive",
         label2="Aggressive"
     )
