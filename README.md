@@ -398,13 +398,14 @@ Defensive players, who prioritize winning whenever possible, will achieve higher
 
 **Experiment 1 Results (2v2 configuration: 2 test players vs 2 neutral players):**
 
-1. **Relative Advantage:** The profit comparison plot shows the relative advantage between defensive and aggressive strategies. Positive values indicate DEF advantage, negative values indicate AGG advantage.
+1. **Relative Advantage:** The profit comparison plot shows the relative advantage between defensive and aggressive strategies. Positive values indicate DEF advantage, negative values indicate AGG advantage. We can see that the defensive players are winning more profits than the aggressive players. 
    ![profit comparison](plots/experiment_1/profit_comparison.png)
 
-2. **Win Rate:** Our simulation results clearly indicate that the defensive strategy is more successful in achieving victory. We found that the win rate for defensive players was significantly higher than that of aggressive players. In this simulated environment, adopting a defensive approach (focusing on stability and minimizing risk) strongly correlated with a higher frequency of winning rounds.
+2. **Win Rate:** Our simulation results clearly indicate that the defensive strategy is more effective at achieving victories. The win rate for defensive players is significantly higher than that of aggressive players. This is likely because defensive players favor lower-risk opportunities, allowing them to win more quickly and consistently than aggressive players. In this simulated environment, adopting a defensive approach—focused on stability and risk minimization—strongly correlates with a higher frequency of winning rounds.
    ![win_rate comparison](plots/experiment_1/win_rate_comparison.png)
 
-3. **Fan Distribution:** The fan distribution plot shows the frequency of wins at different fan values for each strategy. The title includes the total number of wins (strategy takers + neutral players). The plot reveals key distinctions in how each strategy achieves wins across different fan values.
+3. **Fan Distribution:** The fan distribution plot illustrates the frequency of wins at different fan values for each strategy, with the title indicating the total number of wins (strategy takers plus neutral players). The plot highlights key differences in how each strategy achieves victories across fan values.
+From this plot, we observe that defensive players—who typically avoid high-risk moves to claim a win—still outperform aggressive players overall. Notably, there are even instances where defensive players win with five fan values. We believe this occurs when defensive players begin the game with a high–fan-value tile combination, allowing them to secure a strong win without taking additional risks.
    ![fan distribution](plots/experiment_1/fan_distribution.png)
 
 **H2:**
