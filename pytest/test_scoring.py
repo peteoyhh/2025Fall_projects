@@ -17,9 +17,13 @@ def test_compute_winner_profit():
     profit = compute_winner_profit(score=10, is_self_draw=True, deal_in_occurred=False)
     assert profit == 30  # score * 3
     
-    # Deal-in
-    profit = compute_winner_profit(score=10, is_self_draw=False, deal_in_occurred=True)
-    assert profit == 10  # score
+    # Deal-in with penalty_multiplier = 1 (equal transfer)
+    profit = compute_winner_profit(score=10, is_self_draw=False, deal_in_occurred=True, penalty_multiplier=1)
+    assert profit == 10  # score * 1
+    
+    # Deal-in with penalty_multiplier = 3 (equal transfer)
+    profit = compute_winner_profit(score=10, is_self_draw=False, deal_in_occurred=True, penalty_multiplier=3)
+    assert profit == 30  # score * 3 (equal to what loser pays)
     
     # Winner should never have negative profit
     assert profit > 0
@@ -51,4 +55,13 @@ def test_compute_winner_profit_edge_cases():
     # Default case (should not happen but handled)
     profit = compute_winner_profit(score=10, is_self_draw=False, deal_in_occurred=False)
     assert profit == 30  # Defaults to self-draw
+    
+    # Deal-in equal transfer test: winner gets what loser pays
+    score = 10
+    penalty_multiplier = 3
+    winner_profit = compute_winner_profit(score=score, is_self_draw=False, deal_in_occurred=True, 
+                                         penalty_multiplier=penalty_multiplier)
+    loser_cost = compute_loser_cost(score=score, penalty_multiplier=penalty_multiplier, is_deal_in_loser=True)
+    # Winner profit should equal absolute value of loser cost (equal transfer)
+    assert winner_profit == abs(loser_cost)  # 30 == 30
 

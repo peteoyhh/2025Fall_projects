@@ -4,7 +4,7 @@ import argparse
 import contextlib
 import yaml
 from mahjong_sim.real_mc import run_multiple_trials
-from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
+from mahjong_sim.strategies import TempoDefender, ValueChaser
 from mahjong_sim.utils import compare_strategies, compute_statistics
 
 
@@ -27,13 +27,24 @@ def run_quick_demo(cfg):
     print("=" * 60)
     
     print(f"\nRunning {cfg['rounds_per_trial']} rounds...")
+    
+    # Get strategy thresholds and weights from config
+    strategy_cfg = cfg.get("strategy_thresholds", {})
+    weights_cfg = cfg.get("scoring_weights", {})
+    tempo_thresholds = strategy_cfg.get("tempo_defender", {})
+    value_thresholds = strategy_cfg.get("value_chaser", {})
+    
+    # Use TempoDefender for defensive strategy
     results_def = run_multiple_trials(
-        lambda f: defensive_strategy(f, cfg["fan_min"]),
+        TempoDefender(thresholds=tempo_thresholds, weights=weights_cfg),
         cfg,
         num_trials=1
     )
+    # Use ValueChaser for aggressive strategy
     results_agg = run_multiple_trials(
-        lambda f: aggressive_strategy(f, cfg["t_fan_threshold"]),
+        ValueChaser(target_threshold=cfg["t_fan_threshold"], 
+                   thresholds=value_thresholds, 
+                   weights=weights_cfg),
         cfg,
         num_trials=1
     )

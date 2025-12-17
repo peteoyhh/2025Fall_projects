@@ -19,13 +19,14 @@ def compute_score(fan: int, base_points: int = 1) -> int:
     return base_points * (2 ** fan)
 
 
-def compute_winner_profit(score: float, is_self_draw: bool, deal_in_occurred: bool) -> float:
+def compute_winner_profit(score: float, is_self_draw: bool, deal_in_occurred: bool, 
+                         penalty_multiplier: float = 1.0) -> float:
     """
     Compute profit for the winner.
     
     Beijing Mahjong scoring rules:
     - If self-draw: Winner receives score * 3 (one share from each of 3 opponents)
-    - If deal-in: Winner receives score (from the player who dealt in)
+    - If deal-in: Winner receives score * penalty_multiplier (equal transfer from deal-in player)
     
     Important: Winner should NEVER receive negative profit.
     
@@ -33,6 +34,7 @@ def compute_winner_profit(score: float, is_self_draw: bool, deal_in_occurred: bo
         score: Base score (B * 2^fan)
         is_self_draw: Boolean indicating if winner self-drew
         deal_in_occurred: Boolean indicating if deal-in occurred
+        penalty_multiplier: Multiplier for deal-in penalty (default: 1.0)
     
     Returns:
         Profit for the winner (always >= 0)
@@ -41,8 +43,9 @@ def compute_winner_profit(score: float, is_self_draw: bool, deal_in_occurred: bo
         # Self-draw: receive from all 3 opponents
         return score * 3
     elif deal_in_occurred:
-        # Deal-in: receive from the player who dealt in
-        return score
+        # Deal-in: receive score * penalty_multiplier from the player who dealt in
+        # This ensures equal transfer: winner gets what loser pays
+        return score * penalty_multiplier
     else:
         # Should not happen, but default to self-draw
         return score * 3

@@ -44,11 +44,9 @@ All simulation parameters are configured in `configs/base.yaml`:
 base_points: 10              # Base point value for scoring (B in Score = B * 2^fan)
 fan_min: 1                  # Minimum fan for defensive strategy (Pi Hu = 1 fan)
 t_fan_threshold: 3          # Fan threshold for aggressive strategy
-alpha: 0.5                  # Utility weight parameter (missing_hu utility)
-penalty_deal_in: 3          # Deal-in penalty multiplier
+penalty_deal_in: 1          # Deal-in penalty multiplier
 rounds_per_trial: 20        # Number of rounds per trial
-trials: 50                  # Number of trials to run (beyong 50 trails for the senitivity experiment is time consuming)
-baseline_utility: 50        # Starting utility value (added to cumulative utility)
+trials: 50                  # Number of trials to run (more trials provide more stable results but take longer)
 
 ```
 
@@ -98,7 +96,7 @@ open htmlcov/index.html
 │   ├── __init__.py
 │   ├── real_mc.py            # Core Monte Carlo simulation engine
 │   ├── scoring.py            # Scoring functions (score, profit, cost)
-│   ├── strategies.py         # Strategy functions (defensive/aggressive)
+│   ├── strategies.py         # Strategy classes (TempoDefender, ValueChaser) and interfaces
 │   ├── players.py            # Player classes and NeutralPolicy
 │   ├── utils.py              # Statistical utilities and comparisons
 │   └── plotting.py           # Visualization functions
@@ -226,17 +224,24 @@ The **minimum fan requirement** ensures that any hand with `Fan < 1` is invalid 
 
 ### Phase 2 – Experiments
 
-We define two player strategies as decision policies on when to declare a win:
+We define two player strategies that make differentiated decisions at each turn:
 
-- **Defensive strategy (DEF):** declares Hu immediately when `fan >= fan_min` (typically 1) and the hand is ready; minimizes further risk.  
-- **Aggressive strategy (AGG):** declares Hu only if `fan >= t_fan_threshold` (for example, `t_fan_threshold = 3`); otherwise continues drawing, pursuing higher-fan hands.
+- **Defensive strategy (TempoDefender):** 
+  - Declares Hu immediately when `fan >= fan_min` (typically 1) or when risk is high; minimizes further risk
+  - Rarely claims chi/pong/gong to avoid exposing melds
+  - Discards the safest tiles with lowest meld potential
+  
+- **Aggressive strategy (ValueChaser):** 
+  - Declares Hu only if `fan >= t_fan_threshold` (typically 3); falls back to minimum when risk is too high
+  - Willing to claim pong/gong for fan bonuses; can claim chi early
+  - Discards tiles that don't match dominant suit or have low potential first
 
-Each simulation trial consists of **20 rounds per player** (configurable via `rounds_per_trial`), with multiple trials (default: 10) to obtain stable distributions.
+Each simulation trial consists of **20 rounds** (configurable via `rounds_per_trial`) played among all 4 players, with multiple trials (default: 50) to obtain stable distributions.
 
 | **Experiment** | **Variable Manipulated** | **Purpose** |
 |-----------------|--------------------------|-------------|
 | 1. Strategy comparison | Compare DEF vs AGG under identical conditions | Test H1 (profit difference) |
-| 2. Table composition sweep | Vary proportion of DEF players, theta = 0, 1, 2, 3, 4 | Test H2 (composition threshold) |
+| 2. Table composition sweep | Vary proportion of DEF players, theta = 0, 1, 2, 3, 4 | Analyze strategy performance across different table compositions |
 
 ---
 
@@ -251,7 +256,7 @@ Simulation outputs are aggregated across all trials to estimate:
 - Risk metrics such as maximum drawdown and ruin probability under a finite bankroll  
 
 Statistical comparisons between strategy types use **two-sample t-tests** and **confidence intervals**.  
-For composition analysis (H2), we run a **regression of profit against theta** (the proportion of defensive opponents) to detect sign changes that indicate the critical threshold of player compositions.  
+For composition analysis, we run a **regression of profit against theta** (the proportion of defensive opponents) to analyze how table composition affects strategy performance.  
 
 All experiments use **modular Python code** and configuration-driven runs via YAML inputs.
 
@@ -268,26 +273,6 @@ Defensive players, who prioritize winning whenever possible, will achieve higher
    ![win_rate comparison](plots/experiment_1/win_rate_comparison.png)
 3. The Fan distribution reveals a key distinction: at Fan value = 3, aggressive players exhibit a significantly higher win count. This outcome is likely driven by our simulation's design, as aggressive players are programmed to declare a win once they achieve the Fan_threshold of 3 or higher. Surprisingly, at the high end, specifically Fan value = 5, defensive players recorded five wins. We hypothesize that this result occurred because defensive players, when dealt exceptionally strong starting hands, capitalize on the high-Fan opportunities, leading them to outperform aggressive players at that specific upper limit.
    ![fan distribution](plots/experiment_1/fan_distribution.png)
-   
-**H2:**  
-The relative performance of aggressive and defensive strategies depends on the **composition of opponents** at the table.  
-As the proportion of defensive players increases, the expected profit of aggressive players rises, while that of defensive players declines.
-
-1. Scenario: Three Aggressive, One Defensive (3 AGG, 1 DEF)
-Result: The Defensive player earned a higher average profit than the three Aggressive players.
-Possible Reason: The three aggressive players, focused on maximizing large wins ("eager to win more"), may have overlooked the fact that the sole defensive player was primarily focused on a quick, guaranteed win (a "win if the player could" strategy) without regard for secondary goals like "fans" (or utility/bonus rewards). The DEF player's speed and consistency exploited the AGG players' pursuit of riskier, high-reward hands.
-
-2. Scenario: Two Aggressive, Two Defensive (2 AGG, 2 DEF)
-Result: The Aggressive players earned a higher average profit than the two Defensive players.
-Interpretation: This even distribution of strategies aligns with the core prediction of our hypothesis. When the strategies balance, the higher potential payoff from the aggressive approach appears to outweigh the defensive players' consistent, smaller wins, leading to greater average profit for the AGG group.
-
-3. Scenario: One Aggressive, Three Defensive (1 AGG, 3 DEF)
-Result: The Defensive players earned a significantly higher average profit than the single Aggressive player.
-Possible Reason: This scenario often resulted in a very short game. While the lone aggressive player was focused on collecting specific melds for a high-scoring hand, the three defensive players rapidly completed the basic melds necessary to end the round. The speed of the defensive group minimized the aggressive player's opportunity to execute their high-profit strategy.
-    ![profitvstheta](plots/experiment/profit_vs_theta_combined.png)
-
-4. When comparing the win-rate and the composition, the Defensive players maintained a higher win-rate than the Aggressive players, irrespective of the proportion of Aggressive players at the table.
-   ![winratevstheta](plots/experiment/win_rate_vs_theta_combined.png)
 
 ---
 
@@ -303,7 +288,7 @@ Possible Reason: This scenario often resulted in a very short game. While the lo
 
 **Test files:**
 - `test_simulation.py`: Basic simulation functionality
-- `test_simulation_extended.py`: Extended tests including utility calculation
+- `test_simulation_extended.py`: Extended simulation tests
 - `test_strategies.py`: Strategy function tests
 - `test_scoring.py`: Scoring function tests
 - `test_players.py`: Player and NeutralPolicy tests

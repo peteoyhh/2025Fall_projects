@@ -26,7 +26,7 @@ from .scoring import (
     compute_winner_profit,
     compute_loser_cost
 )
-from .strategies import defensive_strategy, aggressive_strategy, BaseStrategy, TableState
+from .strategies import defensive_strategy, aggressive_strategy, BaseStrategy, TableState, TempoDefender, ValueChaser
 from .tiles import Tile, TileType, TileWall
 from .hand import Hand
 from .fan_calculator import FanCalculator
@@ -44,11 +44,12 @@ from .fan_calculator import FanCalculator
 
 class Player:
     """Mahjong player"""
-    def __init__(self, player_id: int, strategy_type: str, strategy_fn=None):
+    def __init__(self, player_id: int, strategy_type: str, strategy_fn=None, cfg=None):
         self.player_id = player_id
         self.strategy_type = strategy_type  # "DEF" or "AGG" or custom
         self.strategy_fn = strategy_fn
         self.strategy_impl = strategy_fn if isinstance(strategy_fn, BaseStrategy) else None
+        self.cfg = cfg or {}
         self.hand = Hand()
         self.is_dealer = False
         self.profit = 0.0
@@ -67,13 +68,17 @@ class Player:
         elif self.strategy_type == "AGG":
             return fan >= fan_threshold
         elif self.strategy_type == "NEU":
-            # Neutral policy: if risk > 0.4 -> Hu immediately, if fan >= 1 -> Hu
-            if risk > 0.4:
+            # Neutral policy fallback (should rarely be used if NeutralPolicy object is provided)
+            strategy_cfg = self.cfg.get("strategy_thresholds", {})
+            neutral_thresholds = strategy_cfg.get("neutral_policy", {})
+            risk_threshold = neutral_thresholds.get("risk_threshold", 0.4)
+            continue_prob = neutral_thresholds.get("continue_probability", 0.2)
+            if risk > risk_threshold:
                 return True
             if fan >= 1:
                 return True
-            # Otherwise 20% chance to continue
-            return random.random() >= 0.2
+            # Otherwise continue_prob% chance to continue
+            return random.random() >= continue_prob
         elif callable(self.strategy_fn):
             return self.strategy_fn(fan)
         return fan >= 1
@@ -83,11 +88,15 @@ class Player:
         if self.strategy_impl:
             return self.strategy_impl.decide_claim(action, context)
         # Neutral/simple fallback: always take Pong/Gong, Chi only if low risk
+        # Use ValueChaser chi threshold as fallback (should rarely be used)
         risk = context.get("risk", 0.0)
+        strategy_cfg = self.cfg.get("strategy_thresholds", {})
+        value_thresholds = strategy_cfg.get("value_chaser", {})
+        chi_risk_threshold = value_thresholds.get("chi_risk_threshold", 0.7)
         if action in ("pong", "gong"):
             return True
         if action == "chi":
-            return risk < 0.7
+            return risk < chi_risk_threshold
         return True
     
     def decide_discard(self, table_state: Optional[TableState] = None) -> Optional[Tile]:
@@ -101,20 +110,27 @@ class Player:
     
     def can_win_on_tile(self, tile: Tile, is_self_draw: bool = False) -> Tuple[bool, int]:
         """Check if can win with this tile, return (can_win, fan)"""
-        # Add tile temporarily
-        self.hand.add_tile(tile)
+        # Check if tile is already in hand
+        tile_already_in_hand = tile in self.hand.tiles
+        
+        # Add tile temporarily (if not already in hand)
+        if not tile_already_in_hand:
+            self.hand.add_tile(tile)
+        
         can_win, _ = self.hand.check_winning_hand()
         
         if can_win:
             # Calculate fan
             fan = FanCalculator.calculate_fan(self.hand, is_self_draw=is_self_draw, 
                                              is_dealer=self.is_dealer)
-            # Remove tile (should always succeed since we just added it)
-            self.hand.remove_tile(tile)
+            # Remove tile only if we added it
+            if not tile_already_in_hand:
+                self.hand.remove_tile(tile)
             return True, fan
         else:
-            # Remove tile (should always succeed since we just added it)
-            self.hand.remove_tile(tile)
+            # Remove tile only if we added it
+            if not tile_already_in_hand:
+                self.hand.remove_tile(tile)
             return False, 0
 
 
@@ -128,6 +144,14 @@ class RealMCSimulation:
         self.current_player = 0
         self.discard_pile: List[Tile] = []
         self.round_results: List[Dict] = []
+        # Get risk calculation parameter from config
+        risk_cfg = cfg.get("risk_calculation", {})
+        self.risk_max_denominator = risk_cfg.get("max_denominator", 100)
+    
+    def _calculate_risk(self) -> float:
+        """Calculate risk based on discard pile size and wall remaining"""
+        return len(self.discard_pile) / max(self.risk_max_denominator, 
+                                            self.wall.remaining() + len(self.discard_pile))
     
     def initialize_round(self, players: List[Player], dealer_index: int = 0):
         """Initialize a new round"""
@@ -176,7 +200,7 @@ class RealMCSimulation:
             
             player.hand.add_tile(drawn_tile)
             # Base risk estimate for this turn (used across decisions)
-            risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+            risk = self._calculate_risk()
             
             # Check if win FIRST (after draw)
             can_win, fan = player.can_win_on_tile(drawn_tile, is_self_draw=True)
@@ -186,7 +210,7 @@ class RealMCSimulation:
                 fan_min = self.cfg.get("fan_min", 1)
                 fan_threshold = self.cfg.get("t_fan_threshold", 3)
                 # Estimate risk (simplified: based on discard pile size)
-                risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                risk = self._calculate_risk()
                 table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
                 
                 if player.should_hu(fan, fan_min, fan_threshold, risk):
@@ -224,7 +248,7 @@ class RealMCSimulation:
                         if can_win_after_gong:
                             fan_min = self.cfg.get("fan_min", 1)
                             fan_threshold = self.cfg.get("t_fan_threshold", 3)
-                            risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                            risk = self._calculate_risk()
                             if player.should_hu(fan_after_gong, fan_min, fan_threshold, risk):
                                 return self._process_win(player, fan_after_gong, is_self_draw=True)
                         
@@ -239,14 +263,17 @@ class RealMCSimulation:
                                 # Continue loop to draw another replacement tile
                                 continue
                             else:
-                                # Should not happen, but break if remove fails
+                                # Should not happen, but if remove fails, replacement tile stays in hand
+                                # Break and continue to discard (replacement tile will be discarded)
                                 break
                         else:
                             # No more Gong possible, break and continue to discard
                             break
-                    # After Gong(s), player continues turn (will discard in next iteration)
-                    # current_player stays the same
-                # If Gong was processed, skip Pong check and continue to discard
+                    # After Gong(s), player continues turn
+                    # The while loop (Gong replacement tiles) completes, then breaks to discard logic
+                    # current_player stays the same, so in the next while turn iteration, this player will discard
+                # If remove_tile failed, drawn_tile is still in hand, skip Gong and continue normally
+                # (drawn_tile will be discarded later)
             else:
                 # If no Gong, check for self-draw Pong
                 # If player self-draws and has 3 identical tiles, can form pong
@@ -256,15 +283,42 @@ class RealMCSimulation:
                         # Can form self-draw pong
                         pong_tiles = [t for t in player.hand.tiles if t == tile]
                         # Remove 3 tiles from hand
+                        removed_count = 0
                         for _ in range(3):
-                            if not player.hand.remove_tile(tile):
-                                # Should not happen, but handle gracefully
+                            if player.hand.remove_tile(tile):
+                                removed_count += 1
+                            else:
+                                # If remove fails, restore removed tiles and skip this pong
+                                for _ in range(removed_count):
+                                    player.hand.add_tile(tile)
                                 break
-                        # Add pong meld
-                        player.hand.add_meld(pong_tiles, remove_from_hand=False, 
-                                           is_concealed=False)
-                        # After self-draw pong, continue to discard
-                        break  # Only form one pong at a time
+                        
+                        # Only add meld if all 3 tiles were successfully removed
+                        if removed_count == 3:
+                            # Add pong meld
+                            player.hand.add_meld(pong_tiles, remove_from_hand=False, 
+                                               is_concealed=False)
+                            
+                            # After self-draw pong, check if hand is now winning
+                            # Check if current hand (with melds) is winning
+                            # drawn_tile is still in hand if it wasn't part of the pong
+                            # If drawn_tile was part of pong, it's now in the meld, so check current hand
+                            can_win_after_pong, fan_after_pong = player.can_win_on_tile(
+                                drawn_tile, is_self_draw=True)
+                            # Note: can_win_on_tile temporarily adds the tile, so it works even if
+                            # drawn_tile was already removed (part of pong) or still in hand
+                            if can_win_after_pong:
+                                fan_min = self.cfg.get("fan_min", 1)
+                                fan_threshold = self.cfg.get("t_fan_threshold", 3)
+                                risk = self._calculate_risk()
+                                if player.should_hu(fan_after_pong, fan_min, fan_threshold, risk):
+                                    return self._process_win(player, fan_after_pong, is_self_draw=True)
+                            
+                            # After self-draw pong, continue to discard
+                            break  # Only form one pong at a time
+                        else:
+                            # Failed to remove all tiles, skip this pong and try next tile
+                            continue
             
             # Note: Chi (sequence) can only be formed from discard, not self-drawn
             # So we don't check for self-draw chi here
@@ -297,10 +351,13 @@ class RealMCSimulation:
                         fan_min = self.cfg.get("fan_min", 1)
                         fan_threshold = self.cfg.get("t_fan_threshold", 3)
                         # Estimate risk for opponent
-                        risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                        risk = self._calculate_risk()
                         table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
                         if other_player.should_hu(fan_other, fan_min, fan_threshold, risk):
                             # Other player wins via deal-in
+                            # Remove discard from discard_pile (it's being claimed for win)
+                            if discard in self.discard_pile:
+                                self.discard_pile.remove(discard)
                             other_player.deal_ins += 1
                             return self._process_win(other_player, fan_other, 
                                                    is_self_draw=False, 
@@ -312,7 +369,7 @@ class RealMCSimulation:
                         other_player = self.players[i]
                         gong_meld_idx = other_player.hand.can_gong(discard)
                         if gong_meld_idx is not None:
-                            risk_local = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                            risk_local = self._calculate_risk()
                             table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
                             if not other_player.should_claim("gong", {"risk": risk_local, "table_state": table_state_local, "fan": 0}):
                                 continue
@@ -321,6 +378,9 @@ class RealMCSimulation:
                             # Replace Pong with Gong (4 tiles: 3 from meld + discard)
                             gong_meld = old_pong.copy() + [discard]
                             other_player.hand.melds[gong_meld_idx] = gong_meld
+                            # Remove discard from discard_pile (it's being claimed for Gong)
+                            if discard in self.discard_pile:
+                                self.discard_pile.remove(discard)
                             # Gong is a fixed meld
                             
                             # Player restarts turn: continuously check for Gong and win after drawing replacement tiles
@@ -339,7 +399,7 @@ class RealMCSimulation:
                                 if can_win_after_gong:
                                     fan_min = self.cfg.get("fan_min", 1)
                                     fan_threshold = self.cfg.get("t_fan_threshold", 3)
-                                    risk = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                                    risk = self._calculate_risk()
                                     if other_player.should_hu(fan_after_gong, fan_min, fan_threshold, risk):
                                         return self._process_win(other_player, fan_after_gong, 
                                                                    is_self_draw=True)
@@ -355,13 +415,15 @@ class RealMCSimulation:
                                         # Continue loop to draw another replacement tile
                                         continue
                                     else:
-                                        # Should not happen, but break if remove fails
+                                        # Should not happen, but if remove fails, replacement tile stays in hand
+                                        # Break and continue to discard (replacement tile will be discarded)
                                         break
                                 else:
                                     # No more Gong possible, break and continue to discard
                                     break
-                            # After Gong(s), player continues turn (will discard in next iteration)
-                            
+                            # After Gong(s), player continues turn
+                            # Break out of player_order loop and action_taken prevents moving to next player
+                            # In the next while loop iteration, this player (now current_player) will discard
                             action_taken = True
                             break  # Only one player can Gong
                 
@@ -371,49 +433,81 @@ class RealMCSimulation:
                         other_player = self.players[i]
                         # Check for Pong first
                         if other_player.hand.can_pong(discard):
-                            risk_local = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                            risk_local = self._calculate_risk()
                             table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
                             if other_player.should_claim("pong", {"risk": risk_local, "table_state": table_state_local, "fan": 0}):
                                 # Player does Pong from discard
                                 # Remove 2 tiles from hand
+                                removed_count = 0
                                 for _ in range(2):
-                                    if not other_player.hand.remove_tile(discard):
-                                        # Should not happen, but handle gracefully
+                                    if other_player.hand.remove_tile(discard):
+                                        removed_count += 1
+                                    else:
+                                        # If remove fails, restore removed tiles and skip this pong
+                                        for _ in range(removed_count):
+                                            other_player.hand.add_tile(discard)
                                         break
-                                # Add exposed Pong (triplet) from discard
-                                pong_meld = [discard, discard, discard]
-                                other_player.hand.add_meld(pong_meld, remove_from_hand=False, 
-                                                          is_concealed=False)
                                 
-                                # Player who did Pong continues (must discard in next iteration)
-                                self.current_player = i
-                                action_taken = True
-                                break  # Only one player can Pong
+                                # Only add meld if all tiles were successfully removed
+                                if removed_count == 2:
+                                    # Add exposed Pong (triplet) from discard
+                                    pong_meld = [discard, discard, discard]
+                                    other_player.hand.add_meld(pong_meld, remove_from_hand=False, 
+                                                              is_concealed=False)
+                                    # Remove discard from discard_pile (it's being claimed for Pong)
+                                    if discard in self.discard_pile:
+                                        self.discard_pile.remove(discard)
+                                    
+                                    # Player who did Pong continues
+                                    # action_taken prevents moving to next player, so this player will discard in next turn iteration
+                                    self.current_player = i
+                                    action_taken = True
+                                    break  # Only one player can Pong
+                                else:
+                                    # Failed to remove all tiles, skip this pong and try next player
+                                    continue
                         # Check for Chi (sequence)
                         elif other_player.hand.can_chi(discard):
                             # Player does Chi from discard
                             chis = other_player.hand.can_chi(discard)
                             if chis:
-                                risk_local = len(self.discard_pile) / max(100, self.wall.remaining() + len(self.discard_pile))
+                                risk_local = self._calculate_risk()
                                 table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
                                 if not other_player.should_claim("chi", {"risk": risk_local, "table_state": table_state_local, "fan": 0, "meld_options": chis}):
                                     pass
                                 else:
                                     chi_meld = chis[0]
                                     # Remove 2 tiles from hand (discard is the 3rd)
-                                    for tile in chi_meld:
-                                        if tile != discard:
-                                            if not other_player.hand.remove_tile(tile):
-                                                # Should not happen, but handle gracefully
-                                                break
-                                    # Add exposed Chi (sequence) from discard
-                                    other_player.hand.add_meld(chi_meld, remove_from_hand=False, 
-                                                              is_concealed=False)
+                                    removed_count = 0
+                                    tiles_to_remove = [t for t in chi_meld if t != discard]
+                                    removed_tiles = []  # Track which tiles were successfully removed
+                                    for tile in tiles_to_remove:
+                                        if other_player.hand.remove_tile(tile):
+                                            removed_count += 1
+                                            removed_tiles.append(tile)
+                                        else:
+                                            # If remove fails, restore removed tiles and skip this chi
+                                            for restored_tile in removed_tiles:
+                                                other_player.hand.add_tile(restored_tile)
+                                            break
                                     
-                                    # Player who did Chi continues (must discard in next iteration)
-                                    self.current_player = i
-                                    action_taken = True
-                                    break  # Only one player can Chi
+                                    # Only add meld if all tiles were successfully removed
+                                    if removed_count == len(tiles_to_remove):
+                                        # Add exposed Chi (sequence) from discard
+                                        other_player.hand.add_meld(chi_meld, remove_from_hand=False, 
+                                                                  is_concealed=False)
+                                        # Remove discard from discard_pile (it's being claimed for Chi)
+                                        if discard in self.discard_pile:
+                                            self.discard_pile.remove(discard)
+                                        
+                                        # Player who did Chi continues
+                                        # action_taken prevents moving to next player, so this player will discard in next turn iteration
+                                        self.current_player = i
+                                        action_taken = True
+                                        break  # Only one player can Chi
+                                    else:
+                                        # Failed to remove all tiles, skip this chi and try next player
+                                        continue
                 
                 # If no action taken, move to next player normally
                 if not action_taken:
@@ -434,25 +528,30 @@ class RealMCSimulation:
         """Process winning result"""
         score = compute_score(fan, self.cfg.get("base_points", 1))
         
+        penalty_multiplier = self.cfg.get("penalty_deal_in", 1)
+        
         if is_self_draw:
             # Self-draw: winner gets from all 3 opponents
+            # compute_winner_profit already returns score * 3 for self-draw
             winner_profit = compute_winner_profit(score, is_self_draw=True, deal_in_occurred=False)
-            total_winner_profit = winner_profit * 3  # Total from 3 opponents
+            total_winner_profit = winner_profit  # Already includes all 3 opponents
             winner.profit += total_winner_profit
             
             for player in self.players:
                 if player != winner:
-                    loser_cost = compute_loser_cost(score, self.cfg.get("penalty_deal_in", 3), 
+                    loser_cost = compute_loser_cost(score, penalty_multiplier, 
                                                    is_deal_in_loser=False)
                     player.profit += loser_cost
         else:
             # Deal-in: winner gets from deal-in player only
-            winner_profit = compute_winner_profit(score, is_self_draw=False, deal_in_occurred=True)
-            total_winner_profit = winner_profit  # Total profit (same as single profit for deal-in)
+            # Equal transfer: winner gets score * penalty_multiplier, loser pays score * penalty_multiplier
+            winner_profit = compute_winner_profit(score, is_self_draw=False, deal_in_occurred=True,
+                                                 penalty_multiplier=penalty_multiplier)
+            total_winner_profit = winner_profit  # Total profit (score * penalty_multiplier for deal-in)
             winner.profit += total_winner_profit
             
             if deal_in_player:
-                loser_cost = compute_loser_cost(score, self.cfg.get("penalty_deal_in", 3), 
+                loser_cost = compute_loser_cost(score, penalty_multiplier, 
                                                is_deal_in_loser=True)
                 deal_in_player.profit += loser_cost
         
@@ -544,7 +643,7 @@ def simulate_table_round(players, cfg, dealer_index):
         strategy_type = player_dict.get("strategy_type", "NEU")
         strategy_fn = player_dict.get("strategy")
         
-        mc_player = Player(i, strategy_type, strategy_fn)
+        mc_player = Player(i, strategy_type, strategy_fn, cfg)
         mc_player.is_dealer = (i == dealer_index)
         mc_players.append(mc_player)
     
@@ -571,50 +670,21 @@ def simulate_table_round(players, cfg, dealer_index):
     
     if winner_idx is not None:
         # Someone won
+        # _process_win has already updated all players' profit
+        # So we should use player.profit directly from mc_players
+        for i, player in enumerate(mc_players):
+            results[i]["profit"] = player.profit
+        
         winner = mc_players[winner_idx]
         results[winner_idx]["won"] = True
         results[winner_idx]["fan"] = fan
         results[winner_idx]["deal_in_as_winner"] = not is_self_draw
         
-        # Calculate total profit for winner (self-draw: 3x, deal-in: 1x)
-        if is_self_draw:
-            total_winner_profit = winner_profit * 3
-        else:
-            total_winner_profit = winner_profit
-        
-        results[winner_idx]["profit"] = total_winner_profit
-        
-        # Calculate losses for other players
-        score = compute_score(fan, cfg.get("base_points", 1))
-        
-        if is_self_draw:
-            # Self-draw: all 3 opponents pay
-            loser_cost = compute_loser_cost(
-                score,
-                cfg.get("penalty_deal_in", 3),
-                is_deal_in_loser=False
-            )
-            for i in range(len(players)):
-                if i != winner_idx:
-                    results[i]["profit"] = loser_cost
-        else:
-            # Deal-in: get deal_in_player from result
+        # Set deal_in_as_loser flag for deal-in case
+        if not is_self_draw:
             deal_in_player_idx = result.get("deal_in_player_id")
-            
             if deal_in_player_idx is not None:
-                loser_cost = compute_loser_cost(
-                    score,
-                    cfg.get("penalty_deal_in", 3),
-                    is_deal_in_loser=True
-                )
-                results[deal_in_player_idx]["profit"] = loser_cost
                 results[deal_in_player_idx]["deal_in_as_loser"] = True
-            else:
-                # Fallback: if deal_in_player_id is None but is_self_draw=False,
-                # this should not happen in normal gameplay, but handle gracefully
-                # In this case, we cannot determine who dealt in, so no one pays deal-in penalty
-                # This is a safety fallback for edge cases
-                pass
         
         # Check for missed Hu opportunities
         for i, player in enumerate(mc_players):
@@ -754,22 +824,33 @@ def _run_table(players, cfg, rounds_per_trial):
 def simulate_table(composition, cfg):
     """
     Simulate a full table trial with given composition using REAL Monte Carlo.
+    Uses TempoDefender for defensive players and ValueChaser for aggressive players.
     """
     num_def = composition
     num_agg = 4 - composition
 
     players = []
-    fan_min = cfg["fan_min"]
     t_fan_threshold = cfg["t_fan_threshold"]
+    
+    # Get strategy thresholds and weights from config
+    strategy_cfg = cfg.get("strategy_thresholds", {})
+    weights_cfg = cfg.get("scoring_weights", {})
+    
+    tempo_thresholds = strategy_cfg.get("tempo_defender", {})
+    value_thresholds = strategy_cfg.get("value_chaser", {})
 
+    # Use TempoDefender strategy class for defensive players
     for _ in range(num_def):
         players.append({
-            "strategy": lambda f, fm=fan_min: defensive_strategy(f, fm),
+            "strategy": TempoDefender(thresholds=tempo_thresholds, weights=weights_cfg),
             "strategy_type": "DEF"
         })
+    # Use ValueChaser strategy class for aggressive players
     for _ in range(num_agg):
         players.append({
-            "strategy": lambda f, th=t_fan_threshold: aggressive_strategy(f, th),
+            "strategy": ValueChaser(target_threshold=t_fan_threshold, 
+                                   thresholds=value_thresholds, 
+                                   weights=weights_cfg),
             "strategy_type": "AGG"
         })
 
@@ -973,7 +1054,7 @@ def simulate_round(player_strategy: Callable[[Union[int, float]], bool],
     return round_results[0]
 
 
-def run_simulation(strategy_fn: Callable[[Union[int, float]], bool], 
+def run_simulation(strategy_fn: Union[Callable[[Union[int, float]], bool], BaseStrategy], 
                   cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
     Run a single trial (multiple rounds) with 1 test player + 3 neutral players.
@@ -982,7 +1063,7 @@ def run_simulation(strategy_fn: Callable[[Union[int, float]], bool],
     All Mahjong games are 4-player; this just simplifies the interface.
     
     Args:
-        strategy_fn: Strategy function
+        strategy_fn: Strategy function or strategy object (BaseStrategy instance)
         cfg: Configuration dictionary
     
     Returns:
@@ -994,17 +1075,37 @@ def run_simulation(strategy_fn: Callable[[Union[int, float]], bool],
     fan_min = cfg.get("fan_min", 1)
     fan_threshold = cfg.get("t_fan_threshold", 3)
     test_strategy_type = "DEF"  # Default
-    if strategy_fn(fan_min):
-        test_strategy_type = "DEF"
-    elif not strategy_fn(fan_threshold - 1):
-        test_strategy_type = "AGG"
+    
+    # Get neutral policy thresholds from config
+    strategy_cfg = cfg.get("strategy_thresholds", {})
+    neutral_thresholds = strategy_cfg.get("neutral_policy", {})
+    
+    # Support both strategy objects and functions
+    if isinstance(strategy_fn, BaseStrategy):
+        # Strategy object: determine type from class name
+        if isinstance(strategy_fn, TempoDefender):
+            test_strategy_type = "DEF"
+        elif isinstance(strategy_fn, ValueChaser):
+            test_strategy_type = "AGG"
+        else:
+            # Default based on should_hu behavior
+            if strategy_fn.should_hu(fan_min, 0.0, None, fan_min, fan_threshold):
+                test_strategy_type = "DEF"
+            else:
+                test_strategy_type = "AGG"
+    elif callable(strategy_fn):
+        # Legacy function-based strategy
+        if strategy_fn(fan_min):
+            test_strategy_type = "DEF"
+        elif not strategy_fn(fan_threshold - 1):
+            test_strategy_type = "AGG"
     
     # Create 4-player table: 1 test player + 3 neutral players
     players = [
         {"strategy": strategy_fn, "strategy_type": test_strategy_type},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"}
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"}
     ]
     
     # Use 4-player table simulation
@@ -1024,7 +1125,7 @@ def run_simulation(strategy_fn: Callable[[Union[int, float]], bool],
     }
 
 
-def run_multiple_trials(strategy_fn: Callable[[Union[int, float]], bool], 
+def run_multiple_trials(strategy_fn: Union[Callable[[Union[int, float]], bool], BaseStrategy], 
                        cfg: Dict[str, Any], num_trials: Optional[int] = None) -> Dict[str, Any]:
     """
     Run multiple trials with 1 test player + 3 neutral players.

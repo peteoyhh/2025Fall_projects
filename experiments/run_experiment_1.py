@@ -2,7 +2,7 @@ import os
 import sys
 import yaml
 import numpy as np
-from mahjong_sim.strategies import defensive_strategy, aggressive_strategy
+from mahjong_sim.strategies import TempoDefender, ValueChaser
 from mahjong_sim.real_mc import simulate_custom_table
 from mahjong_sim.players import NeutralPolicy
 from mahjong_sim.plotting import ensure_dir, save_bar_plot, save_hist, save_scatter_plot, save_kde_plot, save_stacked_fan_distribution
@@ -14,7 +14,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 
-def build_players(test_strategy, test_label, cfg):
+def build_players(test_strategy, test_label, cfg, neutral_thresholds=None):
     players = [{
         "strategy": test_strategy,
         "strategy_type": test_label
@@ -22,7 +22,7 @@ def build_players(test_strategy, test_label, cfg):
     for _ in range(3):
         seed = int(np.random.randint(0, 2**32 - 1))
         players.append({
-            "strategy": NeutralPolicy(seed=seed),
+            "strategy": NeutralPolicy(seed=seed, thresholds=neutral_thresholds),
             "strategy_type": "NEU"
         })
     return players
@@ -70,8 +70,12 @@ def main():
     print("Experiment 1: Strategy Performance (4-player table)")
     print("=" * 60)
     
-    num_trials = cfg.get("trials", 10)
-    rounds_per_trial = cfg.get("rounds_per_trial", 20)
+    num_trials = cfg.get("trials")
+    if num_trials is None:
+        raise ValueError("trials must be specified in config")
+    rounds_per_trial = cfg.get("rounds_per_trial")
+    if rounds_per_trial is None:
+        raise ValueError("rounds_per_trial must be specified in config")
     num_strategies = 2  # DEF and AGG
     total_trials = num_trials * num_strategies
     total_rounds = total_trials * rounds_per_trial
@@ -83,14 +87,25 @@ def main():
 
     fan_min = cfg["fan_min"]
     t_fan_threshold = cfg["t_fan_threshold"]
+    
+    # Get strategy thresholds and weights from config
+    strategy_cfg = cfg.get("strategy_thresholds", {})
+    weights_cfg = cfg.get("scoring_weights", {})
+    tempo_thresholds = strategy_cfg.get("tempo_defender", {})
+    value_thresholds = strategy_cfg.get("value_chaser", {})
+    neutral_thresholds = strategy_cfg.get("neutral_policy", {})
 
     def def_builder():
-        test_strategy = lambda f, fm=fan_min: defensive_strategy(f, fm)
-        return build_players(test_strategy, "DEF", cfg)
+        # Use TempoDefender strategy class for defensive play
+        test_strategy = TempoDefender(thresholds=tempo_thresholds, weights=weights_cfg)
+        return build_players(test_strategy, "DEF", cfg, neutral_thresholds)
 
     def agg_builder():
-        test_strategy = lambda f, th=t_fan_threshold: aggressive_strategy(f, th)
-        return build_players(test_strategy, "AGG", cfg)
+        # Use ValueChaser strategy class for aggressive play
+        test_strategy = ValueChaser(target_threshold=t_fan_threshold, 
+                                   thresholds=value_thresholds, 
+                                   weights=weights_cfg)
+        return build_players(test_strategy, "AGG", cfg, neutral_thresholds)
 
     def_results = summarize_trials(def_builder, cfg)
     agg_results = summarize_trials(agg_builder, cfg)

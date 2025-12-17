@@ -1,8 +1,7 @@
 """
 Experiment 2: 4-Player Table Composition Analysis
 
-Tests Hypothesis H2: "Aggressive strategy performance depends on the proportion
-of defensive players at the table."
+Analyzes how strategy performance varies across different table compositions.
 
 Simulates 5 different table compositions:
 - θ=0: 4 AGG players
@@ -34,14 +33,20 @@ def main():
     
     print("=" * 70)
     print("Experiment 2: 4-Player Table Composition Analysis")
-    print("Testing H2: Strategy performance depends on opponent composition (θ)")
+    print("Analyzing strategy performance across different table compositions (θ)")
     print("=" * 70)
     
     num_trials = cfg.get("trials")
     if num_trials is None:
         raise ValueError("trials must be specified in config")
-    rounds_per_trial = cfg.get("rounds_per_trial", 20)
-    num_compositions = 5  # θ = 0, 1, 2, 3, 4
+    rounds_per_trial = cfg.get("rounds_per_trial")
+    if rounds_per_trial is None:
+        raise ValueError("rounds_per_trial must be specified in config")
+    
+    # Get experiment parameters from config
+    experiment_cfg = cfg.get("experiment", {})
+    num_compositions = experiment_cfg.get("num_compositions", 5)
+    theta_values = experiment_cfg.get("theta_values", [0, 1, 2, 3, 4])
     total_trials = num_trials * num_compositions
     total_rounds = total_trials * rounds_per_trial
     
@@ -56,7 +61,7 @@ def main():
     print("RESULTS BY COMPOSITION")
     print("=" * 70)
     
-    for composition in [0, 1, 2, 3, 4]:
+    for composition in theta_values:
                 num_def = composition
                 num_agg = 4 - composition
                 comp_results = results[composition]
@@ -108,7 +113,7 @@ def main():
     print("REGRESSION ANALYSIS")
     print("=" * 70)
     
-    theta_values = [0, 1, 2, 3, 4]
+    regression_samples = experiment_cfg.get("regression_samples", 100)
     def_profits_for_regression = {}
     agg_profits_for_regression = {}
     
@@ -117,12 +122,12 @@ def main():
                 if len(comp_results["defensive"]["fan_distribution"]) > 0:
                     mean = comp_results["defensive"]["mean_profit"]
                     std = comp_results["defensive"]["std_profit"]
-                    def_profits_for_regression[theta] = np.random.normal(mean, std, 100)
+                    def_profits_for_regression[theta] = np.random.normal(mean, std, regression_samples)
                 
                 if len(comp_results["aggressive"]["fan_distribution"]) > 0:
                     mean = comp_results["aggressive"]["mean_profit"]
                     std = comp_results["aggressive"]["std_profit"]
-                    agg_profits_for_regression[theta] = np.random.normal(mean, std, 100)
+                    agg_profits_for_regression[theta] = np.random.normal(mean, std, regression_samples)
     
     if len(def_profits_for_regression) > 1:
         def_regression = analyze_composition_effect(
@@ -150,7 +155,7 @@ def main():
     print(f"\n{'θ':<5} {'DEF Profit':<15} {'AGG Profit':<15} {'Dealer Profit':<15} {'NonDealer Profit':<17}")
     print("-" * 70)
     
-    for theta in theta_values:
+    for theta in sorted(theta_values):
         comp_results = results[theta]
         # Show mean_profit directly - it's already 0.0 if no players of that type
         def_profit = comp_results["defensive"]["mean_profit"]
@@ -166,10 +171,10 @@ def main():
     
     if len(agg_profits_for_regression) > 1:
         if agg_regression['slope'] > 0:
-            print("\n✅ H2 Supported: Aggressive strategy profit INCREASES as θ increases")
+            print("\nAggressive strategy profit INCREASES as θ increases")
             print("   (More defensive opponents → Better aggressive performance)")
         else:
-            print("\n❌ H2 Not Supported: Aggressive strategy profit DECREASES as θ increases")
+            print("\nAggressive strategy profit DECREASES as θ increases")
             print("   (More defensive opponents → Worse aggressive performance)")
     
     print("\n" + "=" * 70)
@@ -188,7 +193,7 @@ def main():
     all_def_fans = []
     all_agg_fans = []
     
-    for theta in theta_values:
+    for theta in sorted(theta_values):
         comp_results = results[theta]
         if len(comp_results["defensive"]["fan_distribution"]) > 0:
             def_profits.append(comp_results["defensive"]["mean_profit"])

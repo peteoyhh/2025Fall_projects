@@ -4,3 +4,37 @@ t_fan_threshold: 3
 penalty_deal_in: 1
 rounds_per_trial: 20
 trials: 50
+
+# Strategy thresholds
+strategy_thresholds:
+  tempo_defender:
+    high_risk_threshold: 0.5
+    gong_risk_threshold: 0.35
+    pong_risk_threshold: 0.5
+    chi_risk_threshold: 0.35
+    risk_fan_adjustment: 0.5
+  value_chaser:
+    bailout_risk_threshold: 0.65
+    chi_risk_threshold: 0.7
+    chi_wall_threshold: 25
+  neutral_policy:
+    risk_threshold: 0.4
+    continue_probability: 0.2
+
+# Scoring weights for tile evaluation
+scoring_weights:
+  pair_potential: 3
+  sequence_potential: 0.5
+  honor_value: 0.8
+  suit_penalty: 2
+  safety_weight: 0.3
+
+# Risk calculation parameters
+risk_calculation:
+  max_denominator: 100
+
+# Experiment parameters
+experiment:
+  num_compositions: 5
+  theta_values: [0, 1, 2, 3, 4]
+  regression_samples: 100
