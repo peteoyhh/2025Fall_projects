@@ -407,12 +407,36 @@ Defensive players, who prioritize winning whenever possible, will achieve higher
 3. **Fan Distribution:** The fan distribution plot shows the frequency of wins at different fan values for each strategy. The title includes the total number of wins (strategy takers + neutral players). The plot reveals key distinctions in how each strategy achieves wins across different fan values.
    ![fan distribution](plots/experiment_1/fan_distribution.png)
 
+**H2:**
+The relative performance of aggressive and defensive strategies depends on the composition of opponents at the table. As the proportion of defensive players increases, the expected profit of aggressive players rises, while that of defensive players declines.
+
+**Experiment 2 Results ( 4-player table composition analysis):**
+
+1. **Win Rate:** Our simulation shows that the number of defensive players does not consistently increase the win rate of defensive players. When there is only one defensive player, their win rate is much higher than that of aggressive players. This suggests that defensive players are more likely to secure a win even with a small score, and with no competition from other defensive players, they can often win more quickly.
+
+However, when the number of defensive players increases to three, the win rates of defensive players and the single aggressive player become much closer. This is likely because the defensive players are competing with one another and all attempting to win as quickly as possible. This competition slows down the overall game, giving the aggressive player more time to pursue higher-fan tile combinations and ultimately secure a win.
+  ![fan distribution](plots/experiment_2/win_rate_vs_theta_combined.png)
+
+2. **Profit Comparison:** Compared to total wins in terms of win rate, the total profit results show a very different pattern. Defensive players are consistently outperformed by aggressive players in total profit. Regardless of whether there are one, two, or three defensive players at the table, aggressive players always earn higher profits.
+
+These results partially support our hypothesis: as the proportion of defensive players increases, the expected profit of aggressive players also rises. At the same time, the profits of defensive players do increase as their proportion grows, but they still do not catch up to aggressive players.
+
+Aggressive players achieve their highest profits when there are three defensive players. This suggests that competition among the defensive players slows the game and reduces direct pressure on the single aggressive player, allowing them more time to build high-value tile combinations and ultimately earn greater profits.
+
+The relative advantage plot in the profit comparison also shows that aggressive players outperform defensive players.
+  ![fan distribution](plots/experiment_2/profit_vs_theta_combined.png)
+  ![fan distribution](plots/experiment_2/profit_comparison.png)
+
+3. **Does Dealer matters:** Our results also show that being the dealer (the first player to discard a tile) yields higher profits compared to non-dealers. We believe this is because the dealer starts with 14 tiles while other players start with 13, which creates the possibility for the dealer to win immediately at the beginning of the game if they already have a winning tile combination.
+   ![fan distribution](plots/experiment_2/dealer_vs_non_dealer_profit.png)
+
 ---
 
 ## 🀄️ Conclusion
 
-1. Defensive players have a higher win rate and earn more - Even though aggressive players achieve higher fan values, their much lower win frequency prevents those large hands from earning.
-2. Aggressive players do not gain an advantage even when surrounded by other aggressive players - The aggressive strategy's structural weaknesses—low win rate, high missed-Hu rate, and dependency on large hands—outweigh any potential synergy or table-composition advantage.
+1. In experiment1, Defensive players have a higher win rate and earn more overall. Although aggressive players achieve higher fan values, their much lower win frequency prevents these large hands from translating into higher earnings
+2. Aggressive players do not gain an advantage in Experiment 1. The structural weaknesses of the aggressive strategy—low win rate, high missed-Hu rate, and heavy dependence on large hands—outweigh any potential synergy or table-composition advantages.
+3. The results change in Experiment 2. Aggressive players earn higher profits as the number of defensive players at the table increases. However, in terms of win rate, defensive players still outperform aggressive players, even though they lose money when competing against aggressive players.
 
 ---
 
