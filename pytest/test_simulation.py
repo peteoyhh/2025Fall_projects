@@ -13,11 +13,12 @@ def test_simulation_runs():
     }
     result = run_simulation(lambda f: defensive_strategy(f, 1), cfg)
     assert "profit" in result
-    assert "utility" in result
+    assert "mean_fan" in result
     assert "win_rate" in result
     assert "deal_in_rate" in result
     assert "deal_in_loss_rate" in result
     assert "missed_win_rate" in result
+    assert "fan_distribution" in result
     # Win rate should be less than 1.0 (not every hand is winnable)
     assert 0 <= result["win_rate"] <= 1.0
 

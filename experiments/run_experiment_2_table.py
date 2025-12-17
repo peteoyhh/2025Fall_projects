@@ -242,6 +242,19 @@ def main():
         label2="Aggressive"
     )
     
+    # Bar chart: Relative Advantage (DEF vs AGG) - average across all compositions
+    avg_def_profit = np.mean(def_profits)
+    avg_agg_profit = np.mean(agg_profits)
+    def_advantage = avg_def_profit - avg_agg_profit
+    agg_advantage = avg_agg_profit - avg_def_profit
+    save_bar_plot(
+        ["DEF", "AGG"],
+        [def_advantage, agg_advantage],
+        "Relative Advantage: Defensive vs Aggressive Strategy (Average Across All Compositions)",
+        os.path.join(plot_dir, "profit_comparison.png"),
+        ylabel="Relative Advantage"
+    )
+    
     # Bar chart: Dealer vs Non-dealer profit (average across all compositions)
     avg_dealer_profit = np.mean(dealer_profits)
     avg_non_dealer_profit = np.mean(non_dealer_profits)
@@ -254,6 +267,7 @@ def main():
     )
     
     # Stacked bar chart: Overall fan distribution separated by strategy
+    # Note: Experiment 2 has no neutral players (pure DEF vs AGG), so neu_fans=None
     if len(all_def_fans) > 0 or len(all_agg_fans) > 0:
         save_stacked_fan_distribution(
             all_def_fans,
@@ -261,7 +275,8 @@ def main():
             "Overall Fan Distribution by Strategy (All Compositions)",
             os.path.join(plot_dir, "fan_distribution.png"),
             xlabel="Fan Value",
-            ylabel="Frequency"
+            ylabel="Frequency",
+            neu_fans=None  # Experiment 2 has no neutral players
         )
             
     print(f"\nPlots saved to: {plot_dir}")

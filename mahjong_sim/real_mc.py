@@ -71,14 +71,17 @@ class Player:
             # Neutral policy fallback (should rarely be used if NeutralPolicy object is provided)
             strategy_cfg = self.cfg.get("strategy_thresholds", {})
             neutral_thresholds = strategy_cfg.get("neutral_policy", {})
-            risk_threshold = neutral_thresholds.get("risk_threshold", 0.4)
-            continue_prob = neutral_thresholds.get("continue_probability", 0.2)
-            if risk > risk_threshold:
-                return True
-            if fan >= 1:
-                return True
-            # Otherwise continue_prob% chance to continue
-            return random.random() >= continue_prob
+            target_fan = neutral_thresholds.get("target_fan", 3)
+            medium_risk = neutral_thresholds.get("medium_risk_threshold", 0.45)
+            bailout_risk = neutral_thresholds.get("bailout_risk_threshold", 0.70)
+            # High risk: risk >= 0.70, accept fan >= 1
+            if risk >= bailout_risk:
+                return fan >= 1
+            # Medium risk: 0.45 <= risk < 0.70, accept fan >= 2
+            if risk >= medium_risk and risk < bailout_risk:
+                return fan >= 2
+            # Low risk: risk < 0.45, pursue target fan (fan >= 3)
+            return fan >= target_fan
         elif callable(self.strategy_fn):
             return self.strategy_fn(fan)
         return fan >= 1
@@ -243,7 +246,7 @@ class RealMCSimulation:
             # If not win, check for Gong (upgrade existing Pong meld)
             # Gong can only be formed by upgrading an existing Pong meld
             gong_meld_idx = player.hand.can_gong(drawn_tile)
-            if gong_meld_idx is not None:
+            if gong_meld_idx is not None and 0 <= gong_meld_idx < len(player.hand.melds):
                 # Upgrade existing Pong meld to Gong
                 old_pong = player.hand.melds[gong_meld_idx]
                 # Remove the 4th tile from hand (drawn_tile)
@@ -274,7 +277,7 @@ class RealMCSimulation:
                         
                         # Check if can Gong again (upgrade another Pong meld)
                         gong_meld_idx = player.hand.can_gong(replacement)
-                        if gong_meld_idx is not None:
+                        if gong_meld_idx is not None and 0 <= gong_meld_idx < len(player.hand.melds):
                             # Upgrade another Pong meld to Gong
                             old_pong = player.hand.melds[gong_meld_idx]
                             if player.hand.remove_tile(replacement):
@@ -433,7 +436,7 @@ class RealMCSimulation:
                     for i in player_order:
                         other_player = self.players[i]
                         gong_meld_idx = other_player.hand.can_gong(discard)
-                        if gong_meld_idx is not None:
+                        if gong_meld_idx is not None and 0 <= gong_meld_idx < len(other_player.hand.melds):
                             risk_local = self._calculate_risk()
                             # Build opponent discard info
                             opponent_discards_by_suit_local = {}
@@ -488,7 +491,7 @@ class RealMCSimulation:
                                 
                                 # Check if can Gong again (upgrade another Pong meld)
                                 gong_meld_idx = other_player.hand.can_gong(replacement)
-                                if gong_meld_idx is not None:
+                                if gong_meld_idx is not None and 0 <= gong_meld_idx < len(other_player.hand.melds):
                                     # Upgrade another Pong meld to Gong
                                     old_pong = other_player.hand.melds[gong_meld_idx]
                                     if other_player.hand.remove_tile(replacement):
@@ -711,11 +714,12 @@ def run_real_mc_trial(players: List[Player], cfg: Dict, rounds: int = 200) -> Di
         # Update dealer (if dealer didn't win, rotate)
         if result["winner"] is not None:
             winner_idx = result["winner"]
-            if players[winner_idx].is_dealer:
+            # Validate winner_idx to prevent IndexError
+            if 0 <= winner_idx < len(players) and players[winner_idx].is_dealer:
                 # Dealer continues
                 dealer_index = winner_idx
             else:
-                # Rotate dealer
+                # Rotate dealer (either winner_idx invalid or non-dealer won)
                 dealer_index = (dealer_index + 1) % len(players)
         else:
             # Draw: rotate dealer
@@ -1157,9 +1161,9 @@ def simulate_round(player_strategy: Callable[[Union[int, float]], bool],
     # Create 4-player table: 1 test player + 3 neutral players
     players = [
         {"strategy": player_strategy, "strategy_type": test_strategy_type},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1)), "strategy_type": "NEU"}
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"}
     ]
     
     # Simulate one round using 4-player table simulation
@@ -1219,9 +1223,9 @@ def run_simulation(strategy_fn: Union[Callable[[Union[int, float]], bool], BaseS
     # Create 4-player table: 1 test player + 3 neutral players
     players = [
         {"strategy": strategy_fn, "strategy_type": test_strategy_type},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=random.randint(0, 2**32-1), thresholds=neutral_thresholds), "strategy_type": "NEU"}
+        {"strategy": NeutralPolicy(seed=None, thresholds=neutral_thresholds), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None, thresholds=neutral_thresholds), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None, thresholds=neutral_thresholds), "strategy_type": "NEU"}
     ]
     
     # Use 4-player table simulation

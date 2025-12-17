@@ -42,17 +42,18 @@ def test_compare_strategies():
     """Test compare_strategies function."""
     results_def = {
         "profits": np.array([10.0, 20.0, 30.0]),
-        "utilities": np.array([100.0, 200.0, 300.0])
+        "win_rates": np.array([0.1, 0.2, 0.3]),
+        "mean_fans": np.array([2.0, 3.0, 4.0])
     }
     results_agg = {
         "profits": np.array([15.0, 25.0, 35.0]),
-        "utilities": np.array([150.0, 250.0, 350.0])
+        "win_rates": np.array([0.15, 0.25, 0.35]),
+        "mean_fans": np.array([3.0, 4.0, 5.0])
     }
     
     comparison = compare_strategies(results_def, results_agg)
     
     assert "profit" in comparison
-    assert "utility" in comparison
     assert "t_statistic" in comparison["profit"]
     assert "p_value" in comparison["profit"]
     assert "defensive" in comparison["profit"]

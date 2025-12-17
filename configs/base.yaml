@@ -1,6 +1,6 @@
 base_points: 10
 fan_min: 1
-t_fan_threshold: 3
+t_fan_threshold: 5  # Increased from 3 to 5 for AGG strategy
 penalty_deal_in: 1
 rounds_per_trial: 20
 trials: 50
@@ -8,18 +8,21 @@ trials: 50
 # Strategy thresholds
 strategy_thresholds:
   tempo_defender:
-    high_risk_threshold: 0.5
+    medium_risk_threshold: 0.35  # Risk level to start medium risk behavior
+    high_risk_threshold: 0.60  # Risk level to start high risk behavior
     gong_risk_threshold: 0.35
     pong_risk_threshold: 0.5
     chi_risk_threshold: 0.35
     risk_fan_adjustment: 0.5
   value_chaser:
-    bailout_risk_threshold: 0.65
+    medium_risk_threshold: 0.55  # Risk level to start accepting fan >= 4 wins
+    bailout_risk_threshold: 0.80  # Risk level to bail out and accept fan >= 2 wins
     chi_risk_threshold: 0.7
     chi_wall_threshold: 25
   neutral_policy:
-    risk_threshold: 0.4
-    continue_probability: 0.2
+    target_fan: 3  # Target fan for low risk (between DEF's 1 and AGG's 5)
+    medium_risk_threshold: 0.45  # Risk level to start accepting fan >= 2 wins
+    bailout_risk_threshold: 0.70  # Risk level to bail out and accept any win (fan >= 1)
 
 # Scoring weights for tile evaluation
 scoring_weights:

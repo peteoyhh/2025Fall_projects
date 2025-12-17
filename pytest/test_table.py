@@ -82,9 +82,9 @@ def test_simulate_custom_table():
     
     players = [
         {"strategy": lambda f: defensive_strategy(f, 1), "strategy_type": "DEF"},
-        {"strategy": NeutralPolicy(seed=42), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=43), "strategy_type": "NEU"},
-        {"strategy": NeutralPolicy(seed=44), "strategy_type": "NEU"}
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"},
+        {"strategy": NeutralPolicy(seed=None), "strategy_type": "NEU"}
     ]
     
     result = simulate_custom_table(players, cfg)
@@ -113,6 +113,6 @@ def test_simulate_table_per_player_stats():
         assert "player_index" in player_stat
         assert "strategy_type" in player_stat
         assert "profit" in player_stat
-        assert "utility" in player_stat
         assert "win_rate" in player_stat
+        assert "mean_fan" in player_stat
 

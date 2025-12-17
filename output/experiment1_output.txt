@@ -1,35 +1,37 @@
 ============================================================
 Experiment 1: Strategy Performance (4-player table)
+Configuration: 2 test players vs 2 neutral players (2v2)
 ============================================================
 
 Running 50 trials per strategy (2 strategies)
 Each trial consists of 20 rounds
+Table composition: 2 test players vs 2 neutral players
 Total trials: 100
 Total rounds: 2000
 
 
 Defensive Strategy Results:
   (All values are averages across all trials)
-  Profit: 442.80
-  Win Rate: 0.3860
-  Deal-in Rate: 0.2510
-  Mean Fan: 1.79
+  Profit: -422.00
+  Win Rate: 0.0390
+  Deal-in Rate: 0.0225
+  Mean Fan: 1.27
 
 Aggressive Strategy Results:
   (All values are averages across all trials)
-  Profit: -212.40
-  Win Rate: 0.0330
-  Deal-in Rate: 0.0090
-  Mean Fan: 1.70
+  Profit: -502.80
+  Win Rate: 0.0070
+  Deal-in Rate: 0.0030
+  Mean Fan: 0.57
 
 ------------------------------------------------------------
 PROFIT COMPARISON:
 ------------------------------------------------------------
-Defensive Mean: 442.80
-Aggressive Mean: -212.40
-Difference (Def - Agg): 655.20
-t-statistic: 8.5601
-p-value: 0.000000
+Defensive Mean: -422.00
+Aggressive Mean: -502.80
+Difference (Def - Agg): 80.80
+t-statistic: 1.1370
+p-value: 0.258303
 
 ============================================================
 

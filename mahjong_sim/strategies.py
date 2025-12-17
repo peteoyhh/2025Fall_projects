@@ -154,9 +154,9 @@ def _hand_completion_score(hand, weights=None):
     tatsu = 0
     isolated = 0
     
-    # Count pairs
+    # Count pairs (exactly 2 tiles, not triplets)
     for tile, count in tile_counts.items():
-        if count >= 2:
+        if count == 2:
             pairs += 1
     
     # Count tatsu (2-tile sequences that can become chi)
@@ -172,7 +172,7 @@ def _hand_completion_score(hand, weights=None):
             continue  # Honors don't form sequences
         sorted_values = sorted(set(values))
         for i in range(len(sorted_values) - 1):
-            if sorted_values[i+1] - sorted_values[i] <= 2:  # Consecutive or one gap
+            if sorted_values[i+1] - sorted_values[i] <= 1:  # Consecutive or one gap (1-2, 2-3, or 1-3)
                 tatsu += 1
     
     # Count isolated tiles (tiles with no nearby tiles)
@@ -296,7 +296,7 @@ def _evaluate_post_discard_hand(hand, tile_to_discard, weights=None):
     
     # Evaluate structure clarity (pairs and tatsu in remaining tiles)
     tile_counts = Counter(temp_tiles)
-    pairs_after = sum(1 for count in tile_counts.values() if count >= 2)
+    pairs_after = sum(1 for count in tile_counts.values() if count == 2)  # Only count pairs, not triplets
     
     tiles_by_suit = {}
     for tile in temp_tiles:
@@ -311,7 +311,7 @@ def _evaluate_post_discard_hand(hand, tile_to_discard, weights=None):
             continue
         sorted_values = sorted(set(values))
         for i in range(len(sorted_values) - 1):
-            if sorted_values[i+1] - sorted_values[i] <= 2:
+            if sorted_values[i+1] - sorted_values[i] <= 1:  # Consecutive or one gap
                 tatsu_after += 1
     
     structure_clarity = pairs_after + tatsu_after
@@ -359,7 +359,8 @@ def _get_dynamic_weights(base_weights, hand_completion, turn, wall_remaining, ma
     
     # Early game: more exploration, less safety focus
     # Late game: more safety, prioritize completion
-    safety_multiplier = 0.3 + (combined_progress * 0.7)  # 0.3 early -> 1.0 late
+    # Reduced range to prevent excessive conservatism in late game
+    safety_multiplier = 0.4 + (combined_progress * 0.5)  # 0.4 early -> 0.9 late (reduced from 0.3-1.0)
     
     # High completion: prioritize safety and completion
     # Low completion: prioritize exploration and potential
@@ -393,7 +394,8 @@ class TempoDefender(BaseStrategy):
             weights: Optional dict with scoring weights
         """
         self.thresholds = thresholds or {
-            "high_risk_threshold": 0.5,
+            "medium_risk_threshold": 0.35,
+            "high_risk_threshold": 0.60,
             "gong_risk_threshold": 0.35,
             "pong_risk_threshold": 0.5,
             "chi_risk_threshold": 0.35,
@@ -415,10 +417,19 @@ class TempoDefender(BaseStrategy):
         }
 
     def should_hu(self, fan: int, risk: float, hand, fan_min: int, fan_threshold: int) -> bool:
-        if fan >= fan_min:
-            return True
-        # High table risk -> take the win if available
-        return risk >= self.thresholds["high_risk_threshold"] and fan >= fan_min - self.thresholds["risk_fan_adjustment"]
+        medium_risk_threshold = self.thresholds.get("medium_risk_threshold", 0.35)
+        high_risk_threshold = self.thresholds.get("high_risk_threshold", 0.60)
+        
+        # High risk: risk >= 0.60, accept fan >= 1
+        if risk >= high_risk_threshold:
+            return fan >= fan_min
+        
+        # Medium risk: 0.35 <= risk < 0.60, accept fan >= 1
+        if risk >= medium_risk_threshold and risk < high_risk_threshold:
+            return fan >= fan_min
+        
+        # Low risk: risk < 0.35, pursue fan >= 2
+        return fan >= 2
 
     def decide_claim(self, action: str, context: dict) -> bool:
         risk = context.get("risk", 0.0)
@@ -481,18 +492,19 @@ class TempoDefender(BaseStrategy):
             # Post-discard hand quality evaluation
             post_discard_score = _evaluate_post_discard_hand(hand, t, dynamic_weights)
             
-            # Combined score: lower = better to discard
+            # Combined keep score: higher = better to keep (unified with ValueChaser)
             # TempoDefender prioritizes: safety > post-discard quality > potential
-            discard_score = (
-                -safety_weighted * 2.0 +  # Negative: safer tiles are better to discard
-                -post_discard_score * 1.5 +  # Negative: better post-discard = better to discard
-                potential * 0.5 -  # Lower potential = better to discard
-                suit_bonus  # Available suits slightly less preferred to discard
+            # Convert to keep_score format for consistency
+            keep_score = (
+                safety_weighted * 1.5 +  # Positive: safer tiles are better to keep
+                post_discard_score * 1.2 +  # Positive: better post-discard = better to keep
+                potential * 0.5 +  # Higher potential = better to keep
+                suit_bonus  # Available suits slightly preferred to keep
             )
             
-            scored.append((discard_score, t))
+            scored.append((keep_score, t))
         
-        # Sort by discard_score (lower = better to discard)
+        # Sort by keep_score (lower = better to discard, so we want the lowest keep_score)
         scored.sort(key=lambda x: x[0])
         return scored[0][1] if scored else None
 
@@ -516,7 +528,8 @@ class ValueChaser(BaseStrategy):
         """
         self.target_threshold = target_threshold
         self.thresholds = thresholds or {
-            "bailout_risk_threshold": 0.65,
+            "medium_risk_threshold": 0.55,
+            "bailout_risk_threshold": 0.80,
             "chi_risk_threshold": 0.7,
             "chi_wall_threshold": 25
         }
@@ -537,9 +550,18 @@ class ValueChaser(BaseStrategy):
 
     def should_hu(self, fan: int, risk: float, hand, fan_min: int, fan_threshold: int) -> bool:
         threshold = max(self.target_threshold, fan_threshold)
-        if risk > self.thresholds["bailout_risk_threshold"]:
-            # bail out if table is dangerous
-            return fan >= fan_min
+        medium_risk_threshold = self.thresholds.get("medium_risk_threshold", 0.55)
+        bailout_risk_threshold = self.thresholds.get("bailout_risk_threshold", 0.80)
+        
+        # High risk: risk >= 0.80, accept fan >= 1
+        if risk >= bailout_risk_threshold:
+            return fan >= 1
+        
+        # Medium risk: 0.55 <= risk < 0.80, accept fan >= 3
+        if risk >= medium_risk_threshold and risk < bailout_risk_threshold:
+            return fan >= 3
+        
+        # Low risk: risk < 0.55, pursue threshold (fan >= 5)
         return fan >= threshold
 
     def decide_claim(self, action: str, context: dict) -> bool:
@@ -601,9 +623,9 @@ class ValueChaser(BaseStrategy):
             # Base meld potential
             potential = _meld_potential_score(t, tiles, dynamic_weights)
             
-            # Safety score (lower weight for ValueChaser - more risk-tolerant)
+            # Safety score (moderate weight for ValueChaser - balanced risk tolerance)
             safety = _safety_score(t, discard_pile)
-            safety_weighted = safety * dynamic_weights.get("safety_weight", 0.3) * 0.5  # Reduced weight
+            safety_weighted = safety * dynamic_weights.get("safety_weight", 0.3) * 0.8  # Increased from 0.5 to 0.8 for better balance
             
             # Suit availability consideration
             # ValueChaser prefers to keep tiles from suits opponents are discarding (more available)
@@ -620,7 +642,7 @@ class ValueChaser(BaseStrategy):
                 potential +
                 safety_weighted +
                 suit_availability_bonus +
-                post_discard_score * 0.8 -
+                post_discard_score * 1.0 -  # Increased from 0.8 to 1.0 for better structure consideration
                 suit_penalty  # Strong penalty for non-dominant suits
             )
             

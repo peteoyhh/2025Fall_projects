@@ -435,9 +435,9 @@ def save_multi_bar_plot(labels, data_dict, title, outfile, ylabel="Value"):
     plt.close()
 
 
-def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fan Value", ylabel="Frequency"):
+def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fan Value", ylabel="Frequency", neu_fans=None):
     """
-    Save a stacked bar chart for fan distribution with DEF and AGG counts, plus a total bar.
+    Save a stacked bar chart for fan distribution with DEF and AGG counts.
     
     Args:
         def_fans: List/array of fan values for defensive strategy (filter out 0)
@@ -446,16 +446,18 @@ def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fa
         outfile: Output file path
         xlabel: X-axis label
         ylabel: Y-axis label
+        neu_fans: Optional list/array of fan values for neutral players (for total wins calculation)
     """
     # Filter out zeros and convert to arrays
     def_fans = np.array([f for f in def_fans if f > 0])
     agg_fans = np.array([f for f in agg_fans if f > 0])
+    neu_fans = np.array([f for f in neu_fans if f > 0]) if neu_fans is not None else np.array([])
     
     if len(def_fans) == 0 and len(agg_fans) == 0:
         print(f"Warning: No valid fan data for stacked distribution: {title}")
         return
     
-    # Get all unique fan values
+    # Get all unique fan values (from strategy takers only)
     all_fans = np.concatenate([def_fans, agg_fans]) if len(def_fans) > 0 and len(agg_fans) > 0 else (def_fans if len(def_fans) > 0 else agg_fans)
     unique_fans = np.unique(all_fans)
     unique_fans = np.sort(unique_fans)
@@ -465,19 +467,22 @@ def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fa
     agg_counts = [np.sum(agg_fans == f) for f in unique_fans]
     total_counts = [d + a for d, a in zip(def_counts, agg_counts)]
     
-    # Calculate overall total
-    overall_total = len(def_fans) + len(agg_fans)
+    # Calculate strategy taker's total wins (DEF + AGG only)
+    strategy_takers_total = len(def_fans) + len(agg_fans)
+    
+    # Calculate total wins (DEF + AGG + NEU, excluding draws)
+    total_wins = strategy_takers_total + len(neu_fans)
     
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(14, 6))
     
-    # X positions for bars
-    x_pos = np.arange(len(unique_fans) + 1)  # +1 for total bar
+    # X positions for bars (+1 for strategy takers total)
+    x_pos = np.arange(len(unique_fans) + 1)
     
-    # Colors: green for DEF, red for AGG, gray for total
+    # Colors: green for DEF, red for AGG, blue for strategy takers
     def_color = 'green'
     agg_color = 'red'
-    total_color = 'gray'
+    strategy_color = 'blue'
     
     # Plot stacked bars for each fan value
     bottom = np.zeros(len(unique_fans))
@@ -490,9 +495,9 @@ def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fa
     agg_bars = ax.bar(x_pos[:-1], agg_counts, bottom=def_counts, label='Aggressive', 
                       color=agg_color, alpha=0.7, edgecolor='black', linewidth=1)
     
-    # Total bar (at the end)
-    total_bar = ax.bar(x_pos[-1], overall_total, label='Total', 
-                       color=total_color, alpha=0.7, edgecolor='black', linewidth=1)
+    # Strategy Taker's Wins bar (DEF + AGG only)
+    strategy_bar = ax.bar(x_pos[-1], strategy_takers_total, label="Strategy Taker's Wins", 
+                          color=strategy_color, alpha=0.7, edgecolor='black', linewidth=1)
     
     # Add value labels on bars
     for i, (d, a, t) in enumerate(zip(def_counts, agg_counts, total_counts)):
@@ -503,18 +508,24 @@ def save_stacked_fan_distribution(def_fans, agg_fans, title, outfile, xlabel="Fa
         if t > 0:
             ax.text(x_pos[i], d + a, str(t), ha='center', va='bottom', fontsize=9, fontweight='bold')
     
-    # Label for total bar
-    ax.text(x_pos[-1], overall_total/2, str(overall_total), ha='center', va='center', 
+    # Label for strategy taker's wins bar
+    ax.text(x_pos[-1], strategy_takers_total/2, str(strategy_takers_total), ha='center', va='center', 
             fontsize=10, fontweight='bold', color='white')
     
     # Set x-axis labels
-    x_labels = [str(int(f)) for f in unique_fans] + ['Total']
+    x_labels = [str(int(f)) for f in unique_fans] + ["Strategy\nTaker's\nWins"]
     ax.set_xticks(x_pos)
     ax.set_xticklabels(x_labels)
     
     ax.set_xlabel(xlabel, fontsize=12)
     ax.set_ylabel(ylabel, fontsize=12)
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    
+    # Update title to include total wins: "Fan Distribution by Strategy ({number} total wins)"
+    if title.startswith("Fan Distribution by Strategy"):
+        updated_title = f"{title} ({total_wins} total wins)"
+    else:
+        updated_title = f"{title} ({total_wins} total wins)"
+    ax.set_title(updated_title, fontsize=14, fontweight='bold')
     ax.legend()
     ax.grid(True, alpha=0.3, axis='y')
     

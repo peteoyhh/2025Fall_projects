@@ -40,11 +40,11 @@ class FanCalculator:
         
         # ===== 1. Basic Hand — 1 Fan Each =====
         
-        # ① Self-draw — 1 fan
+        # (1) Self-draw — 1 fan
         if is_self_draw:
             fan += 1
         
-        # ② Concealed hand — 1 fan
+        # (2) Concealed hand — 1 fan
         # No exposed melds (all melds are concealed)
         # For concealed hand, we check if there are any melds at all
         # Actually, if melds exist, they are exposed (Pong from discard)
@@ -52,32 +52,32 @@ class FanCalculator:
         if len(hand.melds) == 0:
             fan += 1
         
-        # ③ All simples — 1 fan
+        # (3) All simples — 1 fan
         # No terminals (1 or 9) and no honors
         if FanCalculator._is_all_simples(all_tiles):
             fan += 1
         
         # ===== 2. Common Wins — 2 Fan Each =====
         
-        # ④ All pongs — 2 fan
+        # (4) All pongs — 2 fan
         # Hand consists of four pong sets and one pair
         if len(triplets) == 4 and len(sequences) == 0:
             fan += 2
         
-        # ⑤ Mixed triple chi — 2 fan
+        # (5) Mixed triple chi — 2 fan
         # Same numbered chi appears in all three suits
         if FanCalculator._has_mixed_triple_chi(hand, winning_melds):
             fan += 2
         
         # ===== 3. Advanced Hands — 4–6 Fan Each =====
         
-        # ⑥ Pure flush — 4–6 fan
+        # (6) Pure flush — 4–6 fan
         # Whole hand uses tiles from one suit, no honors
         pure_flush_result = FanCalculator._is_pure_flush(all_tiles, len(hand.melds) == 0)
         if pure_flush_result:
             fan += pure_flush_result  # 4 fan if exposed, 6 fan if concealed
         
-        # ⑦ Little dragons — 4–6 fan
+        # (7) Little dragons — 4–6 fan
         # Two dragon pongs + pair made from the remaining dragon
         little_dragons_result = FanCalculator._is_little_dragons(hand, winning_melds)
         if little_dragons_result:
@@ -85,7 +85,7 @@ class FanCalculator:
         
         # ===== 4. Add-on Bonuses — +1 to +2 Fan =====
         
-        # ⑧ Gong — +1 fan per gong
+        # (8) Gong — +1 fan per gong
         # Count gongs (4-tile melds)
         # Gongs can be in hand.melds (exposed) or in winning_melds (concealed from hand tiles)
         gong_count = 0
@@ -107,7 +107,7 @@ class FanCalculator:
                     gong_count += 1
         fan += gong_count  # +1 fan per gong
         
-        # ⑨ "Gong open" win — +1 fan
+        # (9) "Gong open" win — +1 fan
         # This is handled by checking if the winning tile was drawn after a gong
         # For now, we don't track this in the current implementation
         # (would need to pass a flag indicating if this is a "gong open" win)
