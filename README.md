@@ -411,10 +411,10 @@ From this plot, we observe that defensive players—who typically avoid high-ris
 **H2:**
 The relative performance of aggressive and defensive strategies depends on the composition of opponents at the table. As the proportion of defensive players increases, the expected profit of aggressive players rises, while that of defensive players declines.
 
-**Experiment 2 Results ( 4-player table composition analysis):**
+**Experiment 2 Results (4-player table composition analysis):**
 
 1. **Win Rate:** Our simulation shows that the number of defensive players does not consistently increase the win rate of defensive players. When there is only one defensive player, their win rate is much higher than that of aggressive players. This suggests that defensive players are more likely to secure a win even with a small score, and with no competition from other defensive players, they can often win more quickly.
-However, when the number of defensive players increases to three, the win rates of defensive players and the single aggressive player become much closer. This is likely because the defensive players are competing with one another and all attempting to win as quickly as possible. This competition slows down the overall game, giving the aggressive player more time to pursue higher-fan tile combinations and ultimately secure a win.
+However, when the number of defensive players increases to three, the win rates of defensive players and the single aggressive player become much closer. This is likely because the defensive players are competing with one another and all attempting to win as quickly as possible. This competition slows down the overall game, giving the aggressive player more time to pursue higher-fan tile combinations and ultimately secure a win. Importantly, as θ increases (more defensive opponents), aggressive players' win rates also increase, reflecting their improved opportunities to complete high-fan hands when facing multiple defensive competitors.
   ![fan distribution](plots/experiment_2/win_rate_vs_theta_combined.png)
 
 2. **Profit Comparison:** Compared to total wins in terms of win rate, the total profit results show a very different pattern. Defensive players are consistently outperformed by aggressive players in total profit. Regardless of whether there are one, two, or three defensive players at the table, aggressive players always earn higher profits.
@@ -424,8 +424,8 @@ The relative advantage plot in the profit comparison also shows that aggressive 
   ![fan distribution](plots/experiment_2/profit_vs_theta_combined.png)
   ![fan distribution](plots/experiment_2/profit_comparison.png)
 
-3. **Does Dealer matters:** Our results also show that being the dealer (the first player to discard a tile) yields higher profits compared to non-dealers. We believe this is because the dealer starts with 14 tiles while other players start with 13, which creates the possibility for the dealer to win immediately at the beginning of the game if they already have a winning tile combination.
-   ![fan distribution](plots/experiment_2/dealer_vs_non_dealer_profit.png)
+4. **Fan Distribution:** The overall fan distribution across all compositions shows that aggressive players achieve higher fan values on average, with more wins at 3+ fan levels. Defensive players, while winning more frequently, tend to win with lower fan values (primarily 1-2 fan). This distribution pattern explains why aggressive players can achieve higher profits despite lower win rates—their wins are worth significantly more due to the exponential scoring system (Score = B × 2^fan).
+   ![fan distribution](plots/experiment_2/fan_distribution.png)
 
 ---
 
@@ -448,7 +448,6 @@ The relative advantage plot in the profit comparison also shows that aggressive 
 - `test_table.py`: Table simulation tests
 - `test_utils.py`: Statistical utility tests
 
-**Test Coverage:** Current test coverage is **67.64%**, exceeding the 60% requirement. All tests pass successfully.
 
 ---
 
