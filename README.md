@@ -413,16 +413,12 @@ The relative performance of aggressive and defensive strategies depends on the c
 **Experiment 2 Results ( 4-player table composition analysis):**
 
 1. **Win Rate:** Our simulation shows that the number of defensive players does not consistently increase the win rate of defensive players. When there is only one defensive player, their win rate is much higher than that of aggressive players. This suggests that defensive players are more likely to secure a win even with a small score, and with no competition from other defensive players, they can often win more quickly.
-
 However, when the number of defensive players increases to three, the win rates of defensive players and the single aggressive player become much closer. This is likely because the defensive players are competing with one another and all attempting to win as quickly as possible. This competition slows down the overall game, giving the aggressive player more time to pursue higher-fan tile combinations and ultimately secure a win.
   ![fan distribution](plots/experiment_2/win_rate_vs_theta_combined.png)
 
 2. **Profit Comparison:** Compared to total wins in terms of win rate, the total profit results show a very different pattern. Defensive players are consistently outperformed by aggressive players in total profit. Regardless of whether there are one, two, or three defensive players at the table, aggressive players always earn higher profits.
-
 These results partially support our hypothesis: as the proportion of defensive players increases, the expected profit of aggressive players also rises. At the same time, the profits of defensive players do increase as their proportion grows, but they still do not catch up to aggressive players.
-
 Aggressive players achieve their highest profits when there are three defensive players. This suggests that competition among the defensive players slows the game and reduces direct pressure on the single aggressive player, allowing them more time to build high-value tile combinations and ultimately earn greater profits.
-
 The relative advantage plot in the profit comparison also shows that aggressive players outperform defensive players.
   ![fan distribution](plots/experiment_2/profit_vs_theta_combined.png)
   ![fan distribution](plots/experiment_2/profit_comparison.png)
