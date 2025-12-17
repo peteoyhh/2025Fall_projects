@@ -414,6 +414,7 @@ The relative performance of aggressive and defensive strategies depends on the c
 **Experiment 2 Results (4-player table composition analysis):**
 
 1. **Win Rate:** 
+
   Our simulation shows that the number of defensive players does not consistently increase the win rate of defensive players. When there is only one defensive player (θ = 1), the defensive strategy achieves its highest win rate, substantially exceeding that of aggressive players. In this configuration, the defensive player faces no competition from other defensive strategies and can frequently secure early, low-fan wins.
 
   As the number of defensive players increases to θ = 2 and θ = 3, the win rates of defensive and aggressive players converge. This suggests that competition among multiple defensive players reduces their ability to consistently secure quick wins, narrowing the win-rate advantage. Aggressive players benefit from this reduced pressure at intermediate table compositions, reaching their highest win rate at θ = 3.
@@ -423,6 +424,7 @@ The relative performance of aggressive and defensive strategies depends on the c
   ![fan distribution](plots/experiment_2/win_rate_vs_theta_combined.png)
 
 2. **Profit Comparison:** 
+
   Overall, the profit results show a clear divergence from win-rate outcomes. In general, aggressive players tend to achieve higher expected profit than defensive players in mixed-strategy environments, despite winning fewer rounds. This reflects the impact of the exponential scoring rule, where a small number of high-fan wins can outweigh frequent low-fan victories.
 
   At a high level, aggressive profit increases as the table becomes more defensive-leaning, reaching a peak in moderately defensive environments, before breaking down in fully defensive tables. This pattern suggests that aggressive strategies benefit from reduced pressure and longer game dynamics, which create opportunities to realize high-value hands, but rely on some degree of strategic diversity to remain effective.
