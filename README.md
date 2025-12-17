@@ -463,4 +463,9 @@ Chen, J. C., Tang, S. C., & Wu, I. C. (n.d.). *Monte-Carlo simulation for Mahjon
 National Yang Ming Chiao Tung University Academic Hub.  
 [https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong](https://scholar.nycu.edu.tw/en/publications/monte-carlo-simulation-for-mahjong)
 
+We used AI-assisted tools (OpenAI ChatGPT) to support text refinement, structural organization, 
+and grammar editing during manuscript preparation. AI tools were not used for generating research ideas, 
+analyzing data, conducting experiments, or drawing conclusions. All methodological decisions, analytical 
+results, and interpretations were fully developed and validated by us.
+
 ---
