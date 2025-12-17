@@ -437,7 +437,7 @@ The relative performance of aggressive and defensive strategies depends on the c
 3. **Does Dealer matters:** Our results also show that being the dealer (the first player to discard a tile) yields higher profits compared to non-dealers. We believe this is because the dealer starts with 14 tiles while other players start with 13, which creates the possibility for the dealer to win immediately at the beginning of the game if they already have a winning tile combination.
    ![fan distribution](plots/experiment_2/dealer_vs_non_dealer_profit.png)
 
-4. **Fan Distribution:** The overall fan distribution across all compositions shows that aggressive players achieve higher fan values on average, with more wins at 3+ fan levels. Defensive players, while winning more frequently, tend to win with lower fan values (primarily 1-2 fan). This distribution pattern explains why aggressive players can achieve higher profits despite lower win rates—their wins are worth significantly more due to the exponential scoring system (Score = B × 2^fan).
+4. **Fan Distribution:** Different from experiment 1, in experiment 2, the overall fan distribution across all compositions shows that aggressive players achieve higher fan values on average, with more wins at 3+ fan levels. Defensive players, while winning more frequently, tend to win with lower fan values (primarily 1-2 fans). This distribution pattern explains why aggressive players can achieve higher profits despite lower win rates—their wins are worth significantly more due to the exponential scoring system (Score = B × 2^fan).
    ![fan distribution](plots/experiment_2/fan_distribution.png)
 
 ---
