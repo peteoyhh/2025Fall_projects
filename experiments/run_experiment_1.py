@@ -91,6 +91,10 @@ def main():
     # Get strategy thresholds and weights from config
     strategy_cfg = cfg.get("strategy_thresholds", {})
     weights_cfg = cfg.get("scoring_weights", {})
+    # Merge hand completion and post-discard weights into weights_cfg
+    hand_completion_weights = cfg.get("hand_completion_weights", {})
+    post_discard_weights = cfg.get("post_discard_weights", {})
+    weights_cfg = {**weights_cfg, **hand_completion_weights, **post_discard_weights}
     tempo_thresholds = strategy_cfg.get("tempo_defender", {})
     value_thresholds = strategy_cfg.get("value_chaser", {})
     neutral_thresholds = strategy_cfg.get("neutral_policy", {})

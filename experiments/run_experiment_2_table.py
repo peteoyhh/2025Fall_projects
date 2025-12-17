@@ -180,7 +180,7 @@ def main():
     print("\n" + "=" * 70)
     
     # Generate plots
-    plot_dir = os.path.join(project_root, "plots", "experiment")
+    plot_dir = os.path.join(project_root, "plots", "experiment_2")
     ensure_dir(plot_dir)
 
     # Extract data for plotting

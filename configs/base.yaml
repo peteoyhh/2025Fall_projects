@@ -29,6 +29,19 @@ scoring_weights:
   suit_penalty: 2
   safety_weight: 0.3
 
+# Hand completion evaluation weights
+hand_completion_weights:
+  completed_meld: 3.0
+  pair: 1.5
+  tatsu: 0.8
+  isolated_penalty: -0.5
+
+# Post-discard evaluation weights
+post_discard_weights:
+  isolated_reduction: 2.0
+  structure_clarity: 1.5
+  completion_improvement: 1.0
+
 # Risk calculation parameters
 risk_calculation:
   max_denominator: 100

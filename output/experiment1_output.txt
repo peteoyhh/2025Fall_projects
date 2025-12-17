@@ -1,0 +1,36 @@
+============================================================
+Experiment 1: Strategy Performance (4-player table)
+============================================================
+
+Running 50 trials per strategy (2 strategies)
+Each trial consists of 20 rounds
+Total trials: 100
+Total rounds: 2000
+
+
+Defensive Strategy Results:
+  (All values are averages across all trials)
+  Profit: 442.80
+  Win Rate: 0.3860
+  Deal-in Rate: 0.2510
+  Mean Fan: 1.79
+
+Aggressive Strategy Results:
+  (All values are averages across all trials)
+  Profit: -212.40
+  Win Rate: 0.0330
+  Deal-in Rate: 0.0090
+  Mean Fan: 1.70
+
+------------------------------------------------------------
+PROFIT COMPARISON:
+------------------------------------------------------------
+Defensive Mean: 442.80
+Aggressive Mean: -212.40
+Difference (Def - Agg): 655.20
+t-statistic: 8.5601
+p-value: 0.000000
+
+============================================================
+
+Plots saved to: /Users/xuchen/2025Fall_projects/plots/experiment_1

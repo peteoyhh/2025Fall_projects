@@ -40,6 +40,8 @@ pip install -r requirements.txt
 
 All simulation parameters are configured in `configs/base.yaml`:
 
+#### Basic Game Parameters
+
 ```yaml
 base_points: 10              # Base point value for scoring (B in Score = B * 2^fan)
 fan_min: 1                  # Minimum fan for defensive strategy (Pi Hu = 1 fan)
@@ -47,7 +49,81 @@ t_fan_threshold: 3          # Fan threshold for aggressive strategy
 penalty_deal_in: 1          # Deal-in penalty multiplier
 rounds_per_trial: 20        # Number of rounds per trial
 trials: 50                  # Number of trials to run (more trials provide more stable results but take longer)
+```
 
+#### Strategy Thresholds
+
+These parameters control when strategies decide to claim actions (Hu, Gong, Pong, Chi):
+
+```yaml
+strategy_thresholds:
+  tempo_defender:
+    high_risk_threshold: 0.5        # Risk level at which to accept wins even below fan_min
+    gong_risk_threshold: 0.35       # Maximum risk to claim Gong
+    pong_risk_threshold: 0.5        # Maximum risk to claim Pong
+    chi_risk_threshold: 0.35        # Maximum risk to claim Chi
+    risk_fan_adjustment: 0.5        # Fan adjustment when accepting high-risk wins
+    
+  value_chaser:
+    bailout_risk_threshold: 0.65    # Risk level to bail out and accept fan_min wins
+    chi_risk_threshold: 0.7         # Maximum risk to claim Chi
+    chi_wall_threshold: 25          # Minimum wall tiles remaining to claim Chi
+    
+  neutral_policy:
+    risk_threshold: 0.4             # Risk level to accept wins
+    continue_probability: 0.2       # Probability to continue when risk is low
+```
+
+#### Tile Evaluation Heuristics
+
+These weights control how tiles are evaluated for discard decisions:
+
+```yaml
+scoring_weights:
+  pair_potential: 3          # Weight for tiles that can form pairs/pongs
+  sequence_potential: 0.5    # Weight for tiles that can form sequences (chi)
+  honor_value: 0.8           # Base value for honor tiles (Feng/Jian)
+  suit_penalty: 2            # Penalty for tiles not matching dominant suit (ValueChaser)
+  safety_weight: 0.3         # Weight for safety (tiles already seen in discard pile)
+```
+
+#### Hand Completion Evaluation
+
+These weights assess how close a hand is to completion:
+
+```yaml
+hand_completion_weights:
+  completed_meld: 3.0        # Score for each completed meld (Pong/Chi/Gong)
+  pair: 1.5                  # Score for each pair (potential eyes)
+  tatsu: 0.8                 # Score for each tatsu (2-tile sequence that can become chi)
+  isolated_penalty: -0.5     # Penalty for each isolated tile (no nearby tiles)
+```
+
+#### Post-Discard Evaluation
+
+These weights evaluate hand quality after discarding a tile:
+
+```yaml
+post_discard_weights:
+  isolated_reduction: 2.0    # Bonus for reducing isolated tiles
+  structure_clarity: 1.5     # Bonus for improving pairs/tatsu count
+  completion_improvement: 1.0 # Bonus for improving overall completion
+```
+
+#### Risk Calculation
+
+```yaml
+risk_calculation:
+  max_denominator: 100       # Denominator for risk calculation (risk = discards / max(denominator, wall + discards))
+```
+
+#### Experiment Parameters
+
+```yaml
+experiment:
+  num_compositions: 5       # Number of table compositions to test
+  theta_values: [0, 1, 2, 3, 4]  # Values of theta (number of defensive opponents)
+  regression_samples: 100   # Number of samples for regression analysis
 ```
 
 ### Running Experiments
@@ -227,14 +303,50 @@ The **minimum fan requirement** ensures that any hand with `Fan < 1` is invalid 
 We define two player strategies that make differentiated decisions at each turn:
 
 - **Defensive strategy (TempoDefender):** 
-  - Declares Hu immediately when `fan >= fan_min` (typically 1) or when risk is high; minimizes further risk
-  - Rarely claims chi/pong/gong to avoid exposing melds
-  - Discards the safest tiles with lowest meld potential
+  - **Hu Declaration:** Declares Hu immediately when `fan >= fan_min` (typically 1) or when risk is high (`risk >= high_risk_threshold`); minimizes further risk
+  - **Claim Decisions:** Rarely claims chi/pong/gong to avoid exposing melds (only when risk is below respective thresholds)
+  - **Discard Logic:** 
+    - Prioritizes safety: discards safest tiles (most seen in discard pile)
+    - Considers hand completion: adjusts aggressiveness based on how close hand is to completion
+    - Evaluates post-discard quality: prefers discards that reduce isolated tiles and improve structure
+    - Uses dynamic weights: increases safety focus in late game (when wall is low)
+    - Considers opponent patterns: moderately uses suit availability information
   
 - **Aggressive strategy (ValueChaser):** 
-  - Declares Hu only if `fan >= t_fan_threshold` (typically 3); falls back to minimum when risk is too high
-  - Willing to claim pong/gong for fan bonuses; can claim chi early
-  - Discards tiles that don't match dominant suit or have low potential first
+  - **Hu Declaration:** Declares Hu only if `fan >= t_fan_threshold` (typically 3); falls back to minimum when risk exceeds `bailout_risk_threshold` (0.65)
+  - **Claim Decisions:** Willing to claim pong/gong for fan bonuses; can claim chi early if wall has sufficient tiles (`wall_remaining > chi_wall_threshold`)
+  - **Discard Logic:**
+    - Strongly prioritizes dominant suit retention: heavy penalty for non-dominant suit tiles
+    - Actively seeks available suits: prefers tiles from suits opponents are discarding (more available)
+    - Considers hand completion: adjusts exploration vs. completion focus dynamically
+    - Evaluates post-discard quality: considers structure improvement but prioritizes suit matching
+    - Uses dynamic weights: more exploration in early game, more completion focus in late game
+    - Less safety-focused: lower safety weight, more risk-tolerant
+
+**Key Heuristic Components:**
+
+Both strategies use the following evaluation functions:
+
+1. **Hand Completion Score:** Estimates proximity to winning structure based on:
+   - Completed melds (Pong/Chi/Gong already formed)
+   - Pairs (potential eyes)
+   - Tatsu (2-tile sequences that can become chi)
+   - Isolated tiles (penalty for tiles with no nearby tiles)
+
+2. **Dynamic Weight Adjustment:** Weights change based on:
+   - Hand completion level (higher completion → more conservative)
+   - Round progression (early game → exploration, late game → safety)
+   - Wall remaining (primary indicator, 70% weight) + turn number (30% weight)
+
+3. **Opponent Discard Pattern Analysis:** 
+   - Tracks opponent discards by suit
+   - Suits frequently discarded → more available/safer
+   - Suits rarely discarded → less available (higher risk)
+
+4. **Post-Discard Hand Quality Evaluation:**
+   - Evaluates hand structure after discarding each tile
+   - Prefers discards that reduce isolated tiles
+   - Prefers discards that improve structure clarity (pairs/tatsu count)
 
 Each simulation trial consists of **20 rounds** (configurable via `rounds_per_trial`) played among all 4 players, with multiple trials (default: 50) to obtain stable distributions.
 

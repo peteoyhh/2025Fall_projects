@@ -104,7 +104,7 @@ class Player:
         if not self.hand.tiles:
             return None
         if self.strategy_impl:
-            return self.strategy_impl.choose_discard(self.hand, table_state or TableState([], 0, 0, 0.0))
+            return self.strategy_impl.choose_discard(self.hand, table_state or TableState([], 0, 0, 0.0, None, 0))
         # Simple strategy: discard first tile
         return self.hand.tiles[0]
     
@@ -160,6 +160,8 @@ class RealMCSimulation:
         self.current_player = dealer_index
         self.discard_pile = []
         self.round_results = []
+        # Track opponent discards by suit for strategy analysis
+        self.opponent_discards_by_player = {i: [] for i in range(len(players))}
         
         # Set dealer
         for i, player in enumerate(self.players):
@@ -202,6 +204,17 @@ class RealMCSimulation:
             # Base risk estimate for this turn (used across decisions)
             risk = self._calculate_risk()
             
+            # Build opponent discard information for strategy analysis
+            opponent_discards_by_suit = {}
+            for i, other_player in enumerate(self.players):
+                if i != self.current_player:
+                    player_discards = self.opponent_discards_by_player[i]
+                    for discarded_tile in player_discards:
+                        suit = discarded_tile.tile_type
+                        if suit not in opponent_discards_by_suit:
+                            opponent_discards_by_suit[suit] = []
+                        opponent_discards_by_suit[suit].append(discarded_tile)
+            
             # Check if win FIRST (after draw)
             can_win, fan = player.can_win_on_tile(drawn_tile, is_self_draw=True)
             
@@ -211,7 +224,14 @@ class RealMCSimulation:
                 fan_threshold = self.cfg.get("t_fan_threshold", 3)
                 # Estimate risk (simplified: based on discard pile size)
                 risk = self._calculate_risk()
-                table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
+                table_state = TableState(
+                    discard_pile=self.discard_pile,
+                    wall_remaining=self.wall.remaining(),
+                    turn=turn,
+                    risk=risk,
+                    opponent_discards_by_suit=opponent_discards_by_suit,
+                    total_tiles_discarded=len(self.discard_pile)
+                )
                 
                 if player.should_hu(fan, fan_min, fan_threshold, risk):
                     # Player wins!
@@ -324,12 +344,40 @@ class RealMCSimulation:
             # So we don't check for self-draw chi here
             
             # Discard tile
-            table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
+            # Build opponent discard information for strategy analysis
+            opponent_discards_by_suit = {}
+            for i, other_player in enumerate(self.players):
+                if i != self.current_player:
+                    player_discards = self.opponent_discards_by_player[i]
+                    for discarded_tile in player_discards:
+                        suit = discarded_tile.tile_type
+                        if suit not in opponent_discards_by_suit:
+                            opponent_discards_by_suit[suit] = []
+                        opponent_discards_by_suit[suit].append(discarded_tile)
+            
+            table_state = TableState(
+                discard_pile=self.discard_pile,
+                wall_remaining=self.wall.remaining(),
+                turn=turn,
+                risk=risk,
+                opponent_discards_by_suit=opponent_discards_by_suit,
+                total_tiles_discarded=len(self.discard_pile)
+            )
             discard = player.decide_discard(table_state)
             if discard:
                 player.hand.remove_tile(discard)
                 self.discard_pile.append(discard)
-                table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
+                # Track this player's discard for opponent analysis
+                self.opponent_discards_by_player[self.current_player].append(discard)
+                
+                table_state = TableState(
+                    discard_pile=self.discard_pile,
+                    wall_remaining=self.wall.remaining(),
+                    turn=turn,
+                    risk=risk,
+                    opponent_discards_by_suit=opponent_discards_by_suit,
+                    total_tiles_discarded=len(self.discard_pile)
+                )
                 
                 # Check other players' reactions in priority order: Hu > Gong > Pong > Chi
                 # Players are checked in order: next player, opposite player, previous player
@@ -352,7 +400,24 @@ class RealMCSimulation:
                         fan_threshold = self.cfg.get("t_fan_threshold", 3)
                         # Estimate risk for opponent
                         risk = self._calculate_risk()
-                        table_state = TableState(self.discard_pile, self.wall.remaining(), turn, risk)
+                        # Build opponent discard info for this check
+                        opponent_discards_by_suit_check = {}
+                        for j, p in enumerate(self.players):
+                            if j != i:
+                                player_discards = self.opponent_discards_by_player[j]
+                                for discarded_tile in player_discards:
+                                    suit = discarded_tile.tile_type
+                                    if suit not in opponent_discards_by_suit_check:
+                                        opponent_discards_by_suit_check[suit] = []
+                                    opponent_discards_by_suit_check[suit].append(discarded_tile)
+                        table_state = TableState(
+                            discard_pile=self.discard_pile,
+                            wall_remaining=self.wall.remaining(),
+                            turn=turn,
+                            risk=risk,
+                            opponent_discards_by_suit=opponent_discards_by_suit_check,
+                            total_tiles_discarded=len(self.discard_pile)
+                        )
                         if other_player.should_hu(fan_other, fan_min, fan_threshold, risk):
                             # Other player wins via deal-in
                             # Remove discard from discard_pile (it's being claimed for win)
@@ -370,7 +435,24 @@ class RealMCSimulation:
                         gong_meld_idx = other_player.hand.can_gong(discard)
                         if gong_meld_idx is not None:
                             risk_local = self._calculate_risk()
-                            table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
+                            # Build opponent discard info
+                            opponent_discards_by_suit_local = {}
+                            for j, p in enumerate(self.players):
+                                if j != i:
+                                    player_discards = self.opponent_discards_by_player[j]
+                                    for discarded_tile in player_discards:
+                                        suit = discarded_tile.tile_type
+                                        if suit not in opponent_discards_by_suit_local:
+                                            opponent_discards_by_suit_local[suit] = []
+                                        opponent_discards_by_suit_local[suit].append(discarded_tile)
+                            table_state_local = TableState(
+                                discard_pile=self.discard_pile,
+                                wall_remaining=self.wall.remaining(),
+                                turn=turn,
+                                risk=risk_local,
+                                opponent_discards_by_suit=opponent_discards_by_suit_local,
+                                total_tiles_discarded=len(self.discard_pile)
+                            )
                             if not other_player.should_claim("gong", {"risk": risk_local, "table_state": table_state_local, "fan": 0}):
                                 continue
                             # Upgrade existing Pong meld to Gong
@@ -434,7 +516,24 @@ class RealMCSimulation:
                         # Check for Pong first
                         if other_player.hand.can_pong(discard):
                             risk_local = self._calculate_risk()
-                            table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
+                            # Build opponent discard info
+                            opponent_discards_by_suit_local = {}
+                            for j, p in enumerate(self.players):
+                                if j != i:
+                                    player_discards = self.opponent_discards_by_player[j]
+                                    for discarded_tile in player_discards:
+                                        suit = discarded_tile.tile_type
+                                        if suit not in opponent_discards_by_suit_local:
+                                            opponent_discards_by_suit_local[suit] = []
+                                        opponent_discards_by_suit_local[suit].append(discarded_tile)
+                            table_state_local = TableState(
+                                discard_pile=self.discard_pile,
+                                wall_remaining=self.wall.remaining(),
+                                turn=turn,
+                                risk=risk_local,
+                                opponent_discards_by_suit=opponent_discards_by_suit_local,
+                                total_tiles_discarded=len(self.discard_pile)
+                            )
                             if other_player.should_claim("pong", {"risk": risk_local, "table_state": table_state_local, "fan": 0}):
                                 # Player does Pong from discard
                                 # Remove 2 tiles from hand
@@ -472,7 +571,24 @@ class RealMCSimulation:
                             chis = other_player.hand.can_chi(discard)
                             if chis:
                                 risk_local = self._calculate_risk()
-                                table_state_local = TableState(self.discard_pile, self.wall.remaining(), turn, risk_local)
+                                # Build opponent discard info
+                                opponent_discards_by_suit_local = {}
+                                for j, p in enumerate(self.players):
+                                    if j != i:
+                                        player_discards = self.opponent_discards_by_player[j]
+                                        for discarded_tile in player_discards:
+                                            suit = discarded_tile.tile_type
+                                            if suit not in opponent_discards_by_suit_local:
+                                                opponent_discards_by_suit_local[suit] = []
+                                            opponent_discards_by_suit_local[suit].append(discarded_tile)
+                                table_state_local = TableState(
+                                    discard_pile=self.discard_pile,
+                                    wall_remaining=self.wall.remaining(),
+                                    turn=turn,
+                                    risk=risk_local,
+                                    opponent_discards_by_suit=opponent_discards_by_suit_local,
+                                    total_tiles_discarded=len(self.discard_pile)
+                                )
                                 if not other_player.should_claim("chi", {"risk": risk_local, "table_state": table_state_local, "fan": 0, "meld_options": chis}):
                                     pass
                                 else:
