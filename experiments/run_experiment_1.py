@@ -203,13 +203,17 @@ def main():
         ylabel="Relative Advantage"
     )
     
-    # Bar chart: Win rate (DEF vs AGG)
+    # Bar chart: Actual number of wins (DEF vs AGG)
+    # Calculate actual wins from fan_distribution (each non-zero fan represents a win)
+    def_wins = len([f for f in def_results['fan_distribution'] if f > 0]) if len(def_results['fan_distribution']) > 0 else 0
+    agg_wins = len([f for f in agg_results['fan_distribution'] if f > 0]) if len(agg_results['fan_distribution']) > 0 else 0
+    
     save_bar_plot(
         ["DEF", "AGG"],
-        [def_results['win_rate'], agg_results['win_rate']],
-        "Win Rate Comparison: Defensive vs Aggressive Strategy",
+        [def_wins, agg_wins],
+        "Number of Wins: Defensive vs Aggressive Strategy",
         os.path.join(plot_dir, "win_rate_comparison.png"),
-        ylabel="Win Rate"
+        ylabel="Number of Wins"
     )
     
     # Stacked bar chart: Fan distribution separated by strategy
